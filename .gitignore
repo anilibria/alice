@@ -15,8 +15,31 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Go workspace file
 go.work
 go.work.sum
+
+# gRPC generated code
+swarm/grpc/*.pb.go
+
+# Binary data
+bin/
+__debug_bin
+
+# VSCode data
+pkg/.vscode/launch.json
+.vscode/launch.json
+
+# removing sesetive data
+..bfg-report/
+
+# removing dynamic content and test data
+.bash_history
+data/
+test/
+*.db
+*.sock
+*.cert
+*.crt

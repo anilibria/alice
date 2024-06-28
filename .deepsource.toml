@@ -1,0 +1,18 @@
+version = 1
+
+exclude_patterns = ["vendor/**"]
+
+[[analyzers]]
+name = "docker"
+
+[[analyzers]]
+name = "secrets"
+
+[[analyzers]]
+name = "go"
+
+  [analyzers.meta]
+  import_root = "github.com/anilibria/alice"
+
+[[transformers]]
+name = "gofmt"
