@@ -1,4 +1,4 @@
-# ALICE
+# ALI CE
 
 [![Release Build Status](https://github.com/anilibria/alice/actions/workflows/alice-builder.yml/badge.svg?event=release)](https://github.com/anilibria/alice/actions/workflows/alice-builder.yml)
 [![CodeQL Status](https://github.com/anilibria/alice/actions/workflows/codeql.yml/badge.svg)](https://github.com/anilibria/alice/actions/workflows/codeql.yml)
