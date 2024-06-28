@@ -17,7 +17,7 @@
     </a>
 </div>
 
-ALICE is an acronym from _**A**niLibria ap**i** **c**ache s**e**rvice_.
+ALICE is an acronym from _**A**niLibria **l**egacy ap**i** **c**ache s**e**rvice_.
 
 ALICE helps to provide a high-quality API that serves thousands. It makes legacy products more alive, ensuring high throughput and minimal latency.
 
