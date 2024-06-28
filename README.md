@@ -6,10 +6,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/anilibria/alice)](https://goreportcard.com/report/github.com/anilibria/alice)
 [![License](https://img.shields.io/badge/license-MIT%20License-blue.svg)](https://github.com/anilibria/alice/LICENSE)
 
-[![DeepSource](https://app.deepsource.com/gh/anilibria/alice.svg/?label=active+issues&show_trend=true&token=QIO6_7ZmufuRCfOD-fHjyQjG)](https://app.deepsource.com/gh/anilibria/alice/)
-[![DeepSource](https://app.deepsource.com/gh/anilibria/alice.svg/?label=resolved+issues&show_trend=true&token=QIO6_7ZmufuRCfOD-fHjyQjG)](https://app.deepsource.com/gh/anilibria/alice/)
+[![DeepSource](https://app.deepsource.com/gh/anilibria/alice.svg/?label=active+issues&show_trend=true&token=sn7V4RgP22xI0QubzHnB04Xv)](https://app.deepsource.com/gh/anilibria/alice/)
+[![DeepSource](https://app.deepsource.com/gh/anilibria/alice.svg/?label=resolved+issues&show_trend=true&token=sn7V4RgP22xI0QubzHnB04Xv)](https://app.deepsource.com/gh/anilibria/alice/)
 [![GitHub issues](https://img.shields.io/github/issues/anilibria/alice.svg)](https://github.com/anilibria/alice/issues)
-
 
 <div>
     <a href="https://anilibria.tv/">
