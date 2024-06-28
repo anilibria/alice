@@ -14,8 +14,8 @@ import (
 	"github.com/rs/zerolog/diode"
 	"github.com/urfave/cli/v2"
 
-	"github.com/anilibria/apiv1-cacher/internal/service"
-	"github.com/anilibria/apiv1-cacher/utils"
+	"github.com/anilibria/alice/internal/service"
+	"github.com/anilibria/alice/utils"
 )
 
 var version = "devel" // -ldflags="-X main.version=X.X.X"
@@ -44,7 +44,7 @@ func main() {
 	app := cli.NewApp()
 	cli.VersionFlag = &cli.BoolFlag{Name: "version", Aliases: []string{"V"}}
 
-	app.Name = "apiv1-cacher"
+	app.Name = "alice"
 	app.Version = fmt.Sprintf("%s\t%s", version, buildtime)
 	app.Authors = []*cli.Author{
 		&cli.Author{
@@ -53,7 +53,7 @@ func main() {
 		},
 	}
 	app.Copyright = "(c) 2024 mindhunter86\nwith love for AniLibria project"
-	app.Usage = "AniLibria APIv1 cache service"
+	app.Usage = "AniLibria legacy api cache service"
 
 	app.Flags = []cli.Flag{
 		// common settings
