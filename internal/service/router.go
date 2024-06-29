@@ -82,7 +82,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Dur("latency", elapsed).
 			Str("payload", string(rpayload)).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
-		m.rsyslog(c).WithLevel(lvl).
+		rsyslog(c).WithLevel(lvl).
 			Int("status", status).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
