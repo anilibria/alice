@@ -190,7 +190,7 @@ LOOP:
 }
 
 // ? TO DELETE
-func rlog(c *fiber.Ctx) *zerolog.Logger {
+func rlog(*fiber.Ctx) *zerolog.Logger {
 	// return c.Locals("logger").(*zerolog.Logger)
 	return gLog
 }
