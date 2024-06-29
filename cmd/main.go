@@ -51,14 +51,12 @@ func main() {
 
 	app.Name = "alice"
 	app.Version = fmt.Sprintf("%s\t%s", version, buildtime)
-	app.Authors = []*cli.Author{
-		&cli.Author{
-			Name:  "MindHunter86",
-			Email: "mindhunter86@vkom.cc",
-		},
-	}
 	app.Copyright = "(c) 2024 mindhunter86\nwith love for AniLibria project"
 	app.Usage = "AniLibria legacy api cache service"
+	app.Authors = append(app.Authors, &cli.Author{
+		Name:  "MindHunter86",
+		Email: "mindhunter86@vkom.cc",
+	})
 
 	app.Flags = []cli.Flag{
 		// common settings
