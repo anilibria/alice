@@ -3,7 +3,7 @@ package rewriter
 import "github.com/gofiber/fiber/v2"
 
 func (*Rewriter) HandleDummy(c *fiber.Ctx) error {
-	return respondPlainWithStatus(c, fiber.StatusNoContent)
+	return respondPlainWithStatus(c, fiber.StatusTeapot)
 }
 
 func (*Rewriter) HandleUnavailable(*fiber.Ctx) error {
@@ -15,5 +15,5 @@ func (m *Rewriter) HandleIndex(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
 	}
 
-	return respondPlainWithStatus(c, fiber.StatusNoContent)
+	return respondPlainWithStatus(c, fiber.StatusTeapot)
 }
