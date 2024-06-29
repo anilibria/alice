@@ -105,6 +105,11 @@ func main() {
 			Name:  "http-pprof-enable",
 			Usage: "enable golang http-pprof methods",
 		},
+		&cli.StringFlag{
+			Name:  "http-access-logs-level",
+			Usage: "set logger lovel for access-log logs",
+			Value: zerolog.LevelDebugValue,
+		},
 
 		// limiter settings
 		&cli.BoolFlag{

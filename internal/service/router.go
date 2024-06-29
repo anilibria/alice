@@ -1,9 +1,12 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime/debug"
+	"time"
 
 	"github.com/anilibria/alice/internal/rewriter"
 	"github.com/gofiber/fiber/v2"
@@ -13,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/fiber/v2/middleware/skip"
+	"github.com/rs/zerolog"
 )
 
 func (m *Service) fiberMiddlewareInitialization() {
@@ -35,22 +39,48 @@ func (m *Service) fiberMiddlewareInitialization() {
 	// prefixed logger initialization
 	// - we send logs in syslog and stdout by default,
 	// - but if access-log-stdout is 0 we use syslog output only
-	// !!!
-	// !!!
-	// !!!
-	// m.fb.Use(func(c *fiber.Ctx) error {
-	// 	logger := gLog.With().Str("id", c.Locals("requestid").(string)).Logger().
-	// 		Level(m.runtime.Config.Get(runtime.ParamAccessLevel).(zerolog.Level))
-	// 	syslogger := logger.Output(m.syslogWriter)
+	m.fb.Use(func(c *fiber.Ctx) error {
+		logger := gLog.With().Str("id", c.Locals("requestid").(string)).Logger().
+			Level(m.accesslogLevel)
+		syslogger := logger.Output(m.syslogWriter)
 
-	// 	if m.runtime.Config.Get(runtime.ParamAccessStdout).(int) == 0 {
-	// 		logger = logger.Output(io.Discard)
-	// 	}
+		if zerolog.GlobalLevel() > zerolog.DebugLevel {
+			logger = logger.Output(io.Discard)
+		}
 
-	// 	c.Locals("logger", &logger)
-	// 	c.Locals("syslogger", &syslogger)
-	// 	return c.Next()
-	// })
+		c.Locals("logger", &logger)
+		c.Locals("syslogger", &syslogger)
+		return c.Next()
+	})
+
+	// time collector + logger
+	m.fb.Use(func(c *fiber.Ctx) (e error) {
+		started, e := time.Now(), c.Next()
+		stopped := time.Now()
+		elapsed := stopped.Sub(started).Round(time.Microsecond)
+
+		status, lvl, err := c.Response().StatusCode(), m.accesslogLevel, new(fiber.Error)
+		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {
+			status, lvl = err.Code, zerolog.WarnLevel
+		}
+
+		rlog(c).WithLevel(lvl).
+			Int("status", status).
+			Str("method", c.Method()).
+			Str("path", c.Path()).
+			Str("ip", c.IP()).
+			Dur("latency", elapsed).
+			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
+		m.rsyslog(c).WithLevel(lvl).
+			Int("status", status).
+			Str("method", c.Method()).
+			Str("path", c.Path()).
+			Str("ip", c.IP()).
+			Dur("latency", elapsed).
+			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
+
+		return
+	})
 
 	// ! LIMITER
 	// media.Use(limiter.New(limiter.Config{

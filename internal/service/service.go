@@ -31,7 +31,8 @@ type Service struct {
 	fb     *fiber.App
 	fbstor fiber.Storage
 
-	syslogWriter io.Writer
+	syslogWriter   io.Writer
+	accesslogLevel zerolog.Level
 }
 
 func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
@@ -130,7 +131,16 @@ func (m *Service) Bootstrap() (e error) {
 	defer gAbort()
 
 	// BOOTSTRAP SECTION:
-	// ! http (must be at he end of bootstrap)
+	// parse log level for fiber logs
+	if m.accesslogLevel, e = zerolog.ParseLevel(gCli.String("http-access-logs-level")); e != nil {
+		return
+	}
+
+	// another subsystems
+	// ? write initialization block above the http
+	// ...
+
+	// ! http server bootstrap (shall be at the end of bootstrap section)
 	gofunc(&wg, func() {
 		gLog.Debug().Msg("starting fiber http server...")
 		defer gLog.Debug().Msg("fiber http server has been stopped")
@@ -141,10 +151,6 @@ func (m *Service) Bootstrap() (e error) {
 			gLog.Error().Err(e).Msg("fiber internal error")
 		}
 	})
-
-	// another subsystems
-	// ? write initialization block above the http
-	// ...
 
 	// main event loop
 	wg.Add(1)
@@ -193,4 +199,8 @@ LOOP:
 func rlog(c *fiber.Ctx) *zerolog.Logger {
 	// return c.Locals("logger").(*zerolog.Logger)
 	return gLog
+}
+
+func (m *Service) rsyslog(c *fiber.Ctx) (l *zerolog.Logger) {
+	return c.Locals("syslogger").(*zerolog.Logger)
 }
