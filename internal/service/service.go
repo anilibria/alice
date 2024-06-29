@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -15,8 +14,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
-
-	bolt "github.com/gofiber/storage/bbolt"
 )
 
 var (
@@ -89,18 +86,18 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 	})
 
 	// storage setup for fiber's limiter
-	if gCli.Bool("limiter-use-bbolt") {
-		var prefix string
-		if prefix = gCli.String("database-prefix"); prefix == "" {
-			prefix = "."
-		}
+	// if gCli.Bool("limiter-use-bbolt") {
+	// 	var prefix string
+	// 	if prefix = gCli.String("database-prefix"); prefix == "" {
+	// 		prefix = "."
+	// 	}
 
-		service.fbstor = bolt.New(bolt.Config{
-			Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
-			Bucket:   "application-limiter",
-			Reset:    false,
-		})
-	}
+	// 	service.fbstor = bolt.New(bolt.Config{
+	// 		Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
+	// 		Bucket:   "application-limiter",
+	// 		Reset:    false,
+	// 	})
+	// }
 
 	// fiber configuration
 	service.fiberMiddlewareInitialization()
@@ -197,8 +194,7 @@ LOOP:
 
 // ? TO DELETE
 func rlog(c *fiber.Ctx) *zerolog.Logger {
-	// return c.Locals("logger").(*zerolog.Logger)
-	return gLog
+	return c.Locals("logger").(*zerolog.Logger)
 }
 
 func (m *Service) rsyslog(c *fiber.Ctx) (l *zerolog.Logger) {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anilibria/alice/internal/rewriter"
+	"github.com/anilibria/alice/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/favicon"
@@ -35,6 +36,12 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 	// request id
 	m.fb.Use(requestid.New())
+
+	// insert payload for futher processing
+	m.fb.Use(func(c *fiber.Ctx) error {
+		c.Locals(utils.FLKRewriterHeader, gCli.String("rewriter-response-header"))
+		return c.Next()
+	})
 
 	// prefixed logger initialization
 	// - we send logs in syslog and stdout by default,
@@ -64,12 +71,16 @@ func (m *Service) fiberMiddlewareInitialization() {
 			status, lvl = err.Code, zerolog.WarnLevel
 		}
 
+		// get rewriter payload
+		rpayload := c.Response().Header.Peek(c.Locals(utils.FLKRewriterHeader).(string))
+
 		rlog(c).WithLevel(lvl).
 			Int("status", status).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
 			Str("ip", c.IP()).
 			Dur("latency", elapsed).
+			Str("payload", string(rpayload)).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
 		m.rsyslog(c).WithLevel(lvl).
 			Int("status", status).
@@ -77,6 +88,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Str("path", c.Path()).
 			Str("ip", c.IP()).
 			Dur("latency", elapsed).
+			Str("payload", string(rpayload)).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
 
 		return
