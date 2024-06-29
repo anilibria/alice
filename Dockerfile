@@ -2,7 +2,7 @@
 # vim: ft=Dockerfile
 
 # container - builder
-FROM golang:1.19.1-alpine AS build
+FROM golang:1.19.10-alpine AS build
 LABEL maintainer="mindhunter86 <mindhunter86@vkom.cc>"
 
 ARG GOAPP_MAIN_VERSION="devel"
