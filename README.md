@@ -1,7 +1,6 @@
 # ALICE
 
 [![Release Build Status](https://github.com/anilibria/alice/actions/workflows/alice-builder.yml/badge.svg?event=release)](https://github.com/anilibria/alice/actions/workflows/alice-builder.yml)
-[![CodeQL Status](https://github.com/anilibria/alice/actions/workflows/codeql.yml/badge.svg)](https://github.com/anilibria/alice/actions/workflows/codeql.yml)
 [![GoDoc](https://godoc.org/github.com/anilibria/alice?status.svg)](https://godoc.org/github.com/anilibria/alice)
 [![Go Report Card](https://goreportcard.com/badge/github.com/anilibria/alice)](https://goreportcard.com/report/github.com/anilibria/alice)
 [![License](https://img.shields.io/badge/license-MIT%20License-blue.svg)](https://github.com/anilibria/alice/LICENSE)
