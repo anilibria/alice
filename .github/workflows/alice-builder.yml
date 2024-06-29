@@ -50,6 +50,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       # https://github.community/t/additional-function-s-lowercase-uppercase/140632
       - name: lowercase repository name
         run: |
