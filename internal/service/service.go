@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -15,8 +14,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
-
-	bolt "github.com/gofiber/storage/bbolt"
 )
 
 var (
@@ -28,10 +25,11 @@ var (
 )
 
 type Service struct {
-	fb     *fiber.App
-	fbstor fiber.Storage
+	fb *fiber.App
+	// fbstor fiber.Storage
 
-	syslogWriter io.Writer
+	syslogWriter   io.Writer
+	accesslogLevel zerolog.Level
 }
 
 func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
@@ -88,18 +86,18 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 	})
 
 	// storage setup for fiber's limiter
-	if gCli.Bool("limiter-use-bbolt") {
-		var prefix string
-		if prefix = gCli.String("database-prefix"); prefix == "" {
-			prefix = "."
-		}
+	// if gCli.Bool("limiter-use-bbolt") {
+	// 	var prefix string
+	// 	if prefix = gCli.String("database-prefix"); prefix == "" {
+	// 		prefix = "."
+	// 	}
 
-		service.fbstor = bolt.New(bolt.Config{
-			Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
-			Bucket:   "application-limiter",
-			Reset:    false,
-		})
-	}
+	// 	service.fbstor = bolt.New(bolt.Config{
+	// 		Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
+	// 		Bucket:   "application-limiter",
+	// 		Reset:    false,
+	// 	})
+	// }
 
 	// fiber configuration
 	service.fiberMiddlewareInitialization()
@@ -130,7 +128,16 @@ func (m *Service) Bootstrap() (e error) {
 	defer gAbort()
 
 	// BOOTSTRAP SECTION:
-	// ! http (must be at he end of bootstrap)
+	// parse log level for fiber logs
+	if m.accesslogLevel, e = zerolog.ParseLevel(gCli.String("http-access-logs-level")); e != nil {
+		return
+	}
+
+	// another subsystems
+	// ? write initialization block above the http
+	// ...
+
+	// ! http server bootstrap (shall be at the end of bootstrap section)
 	gofunc(&wg, func() {
 		gLog.Debug().Msg("starting fiber http server...")
 		defer gLog.Debug().Msg("fiber http server has been stopped")
@@ -141,10 +148,6 @@ func (m *Service) Bootstrap() (e error) {
 			gLog.Error().Err(e).Msg("fiber internal error")
 		}
 	})
-
-	// another subsystems
-	// ? write initialization block above the http
-	// ...
 
 	// main event loop
 	wg.Add(1)
@@ -189,8 +192,10 @@ LOOP:
 	}
 }
 
-// ? TO DELETE
-func rlog(*fiber.Ctx) *zerolog.Logger {
-	// return c.Locals("logger").(*zerolog.Logger)
-	return gLog
+func rlog(c *fiber.Ctx) *zerolog.Logger {
+	return c.Locals("logger").(*zerolog.Logger)
+}
+
+func rsyslog(c *fiber.Ctx) (l *zerolog.Logger) {
+	return c.Locals("syslogger").(*zerolog.Logger)
 }
