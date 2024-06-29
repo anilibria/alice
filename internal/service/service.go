@@ -25,8 +25,8 @@ var (
 )
 
 type Service struct {
-	fb     *fiber.App
-	fbstor fiber.Storage
+	fb *fiber.App
+	// fbstor fiber.Storage
 
 	syslogWriter   io.Writer
 	accesslogLevel zerolog.Level
