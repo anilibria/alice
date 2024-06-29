@@ -73,6 +73,6 @@ func (*Rewriter) rewrite(c *fiber.Ctx) (e error) {
 		buf.WriteString(fmt.Sprintf("%s=%s&", v, c.FormValue(v)))
 	}
 
-	c.Set("X-Parsed-Form", string(buf.Bytes())[0:buf.Len()-1])
+	c.Set("X-Parsed-Form", string(buf.Bytes()[0:buf.Len()-1]))
 	return
 }
