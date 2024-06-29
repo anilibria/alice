@@ -42,7 +42,12 @@ func main() {
 
 	// application
 	app := cli.NewApp()
-	cli.VersionFlag = &cli.BoolFlag{Name: "version", Aliases: []string{"V"}}
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:               "version",
+		Usage:              "show version",
+		Aliases:            []string{"V"},
+		DisableDefaultText: true,
+	}
 
 	app.Name = "alice"
 	app.Version = fmt.Sprintf("%s\t%s", version, buildtime)
@@ -65,64 +70,78 @@ func main() {
 			EnvVars: []string{"LOG_LEVEL"},
 		},
 		&cli.BoolFlag{
-			Name:    "quite",
-			Aliases: []string{"q"},
-			Usage:   "Flag is equivalent to --log-level=quite",
+			Name:               "quite",
+			Aliases:            []string{"q"},
+			Usage:              "equivalent to --log-level=quite",
+			DisableDefaultText: true,
 		},
 
 		// common settings : syslog
 		&cli.StringFlag{
 			Name:    "syslog-server",
+			Usage:   "syslog server (optional); syslog sender is not used if value is empty",
 			Value:   "",
 			EnvVars: []string{"SYSLOG_ADDRESS"},
 		},
 		&cli.StringFlag{
 			Name:  "syslog-proto",
+			Usage: "syslog protocol (optional); tcp or udp is possible",
 			Value: "tcp",
 		},
 		&cli.StringFlag{
 			Name:  "syslog-tag",
+			Usage: "optional setting; more information in syslog RFC",
 			Value: "",
 		},
 
 		// fiber-server settings
 		&cli.StringFlag{
 			Name:  "http-listen-addr",
-			Usage: "Ex: 127.0.0.1:8080, :8080",
+			Usage: "format - 127.0.0.1:8080, :8080",
 			Value: "127.0.0.1:8080",
 		},
 		&cli.StringFlag{
 			Name:  "http-trusted-proxies",
-			Usage: "Ex: 10.0.0.0/8; Separated by comma",
+			Usage: "format - 192.168.0.0/16; can be separated by comma",
 		},
 		&cli.BoolFlag{
 			Name: "http-prefork",
-			Usage: `Enables use of the SO_REUSEPORT socket option;
+			Usage: `enables use of the SO_REUSEPORT socket option;
 			if enabled, the application will need to be ran
-			through a shell because prefork mode sets environment variables`,
+			through a shell because prefork mode sets environment variables;
+			EXPERIMENTAL! USE CAREFULLY!`,
+			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
-			Name:  "http-pprof-enable",
-			Usage: "enable golang http-pprof methods",
+			Name:               "http-pprof-enable",
+			Usage:              "enable golang http-pprof methods",
+			DisableDefaultText: true,
 		},
 		&cli.StringFlag{
 			Name:  "http-access-logs-level",
-			Usage: "set logger lovel for access-log logs",
+			Usage: "set logger level for access-log logs",
 			Value: zerolog.LevelDebugValue,
 		},
 
 		// limiter settings
-		&cli.BoolFlag{
-			Name:  "limiter-use-bbolt",
-			Usage: "use bbolt key\value file database instead of memory database",
-		},
-		&cli.IntFlag{
-			Name:  "limiter-max-req",
-			Value: 200,
-		},
-		&cli.DurationFlag{
-			Name:  "limiter-records-duration",
-			Value: 5 * time.Minute,
+		// &cli.BoolFlag{
+		// 	Name:  "limiter-use-bbolt",
+		// 	Usage: "use bbolt key\value file database instead of memory database",
+		// },
+		// &cli.IntFlag{
+		// 	Name:  "limiter-max-req",
+		// 	Value: 200,
+		// },
+		// &cli.DurationFlag{
+		// 	Name:  "limiter-records-duration",
+		// 	Value: 5 * time.Minute,
+		// },
+
+		// rewriter settings
+		&cli.StringFlag{
+			Name:  "rewriter-response-header",
+			Usage: "header for parsed payload",
+			Value: "X-Parsed-Form",
 		},
 	}
 
