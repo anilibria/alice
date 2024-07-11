@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -11,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anilibria/alice/internal/cache"
+	"github.com/anilibria/alice/internal/proxy"
+	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
@@ -28,6 +32,9 @@ type Service struct {
 	fb *fiber.App
 	// fbstor fiber.Storage
 
+	proxy *proxy.Proxy
+	cache *cache.Cache
+
 	syslogWriter   io.Writer
 	accesslogLevel zerolog.Level
 }
@@ -38,23 +45,27 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 	service := new(Service)
 	service.syslogWriter = s
 
+	appname := fmt.Sprintf("%s/%s", c.App.Name, c.App.Version)
+
 	service.fb = fiber.New(fiber.Config{
 		EnableTrustedProxyCheck: len(gCli.String("http-trusted-proxies")) > 0,
 		TrustedProxies:          strings.Split(gCli.String("http-trusted-proxies"), ","),
 		ProxyHeader:             fiber.HeaderXForwardedFor,
 
-		AppName:               gCli.App.Name,
-		ServerHeader:          gCli.App.Name,
+		AppName:               appname,
+		ServerHeader:          appname,
 		DisableStartupMessage: true,
 
 		StrictRouting:      true,
 		DisableDefaultDate: true,
 		DisableKeepalive:   false,
 
+		DisablePreParseMultipartForm: true,
+
 		Prefork:      gCli.Bool("http-prefork"),
 		IdleTimeout:  300 * time.Second,
-		ReadTimeout:  1000 * time.Millisecond,
-		WriteTimeout: 200 * time.Millisecond,
+		ReadTimeout:  10000 * time.Millisecond,
+		WriteTimeout: 2000 * time.Millisecond,
 
 		DisableDefaultContentType: true,
 
@@ -99,10 +110,6 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 	// 	})
 	// }
 
-	// fiber configuration
-	service.fiberMiddlewareInitialization()
-	service.fiberRouterInitialization()
-
 	return service
 }
 
@@ -121,6 +128,9 @@ func (m *Service) Bootstrap() (e error) {
 	}
 
 	gCtx, gAbort = context.WithCancel(context.Background())
+	gCtx = context.WithValue(gCtx, utils.CKLogger, gLog)
+	gCtx = context.WithValue(gCtx, utils.CKCliCtx, gCli)
+	gCtx = context.WithValue(gCtx, utils.CKAbortFunc, gAbort)
 
 	// defer m.checkErrorsBeforeClosing(echan)
 	// defer wg.Wait() // !!
@@ -133,9 +143,23 @@ func (m *Service) Bootstrap() (e error) {
 		return
 	}
 
+	// cache module
+	if m.cache, e = cache.NewCache(gCtx); e != nil {
+		return
+	}
+	gCtx = context.WithValue(gCtx, utils.CKCache, m.cache)
+	gofunc(&wg, m.cache.Bootstrap)
+
+	// proxy module
+	m.proxy = proxy.NewProxy(gCtx)
+
 	// another subsystems
 	// ? write initialization block above the http
 	// ...
+
+	// fiber configuration
+	m.fiberMiddlewareInitialization()
+	m.fiberRouterInitialization()
 
 	// ! http server bootstrap (shall be at the end of bootstrap section)
 	gofunc(&wg, func() {

@@ -15,7 +15,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/anilibria/alice/internal/service"
-	"github.com/anilibria/alice/utils"
+	"github.com/anilibria/alice/internal/utils"
 )
 
 var version = "devel" // -ldflags="-X main.version=X.X.X"
@@ -140,6 +140,81 @@ func main() {
 			Name:  "rewriter-response-header",
 			Usage: "header for parsed payload",
 			Value: "X-Parsed-Form",
+		},
+
+		// proxy settings
+		&cli.StringFlag{
+			Name:  "proxy-dst-server",
+			Usage: "destination server",
+			Value: "127.0.0.1:36080",
+		},
+		&cli.StringFlag{
+			Name:  "proxy-dst-host",
+			Usage: "request Host header for dst server",
+			Value: "api.anilibria.tv",
+		},
+		&cli.DurationFlag{
+			Name:  "proxy-read-timeout",
+			Value: 5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "proxy-write-timeout",
+			Value: 5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "proxy-conn-timeout",
+			Usage: "force connection rotation after this `time`",
+			Value: 10 * time.Minute,
+		},
+		&cli.DurationFlag{
+			Name:  "proxy-idle-timeout",
+			Value: 2 * time.Minute,
+		},
+		&cli.IntFlag{
+			Name:  "proxy-max-idle-conn",
+			Value: 256,
+		},
+		&cli.IntFlag{
+			Name:  "proxy-max-conns-per-host",
+			Value: 256,
+		},
+		&cli.DurationFlag{
+			Name:  "proxy-dns-cache-dur",
+			Value: 1 * time.Minute,
+		},
+		&cli.IntFlag{
+			Name:  "proxy-tcpdial-concurr",
+			Usage: "0 - unlimited",
+			Value: 0,
+		},
+
+		&cli.IntFlag{
+			Name:  "cache-shards",
+			Usage: "number of shards (must be a power of 2)",
+			Value: 1024,
+		},
+		&cli.DurationFlag{
+			Name:  "cache-life-window",
+			Usage: "time after which entry can be evicted",
+			Value: 10 * time.Minute,
+		},
+		&cli.DurationFlag{
+			Name: "cache-clean-window",
+			Usage: `Interval between removing expired entries (clean up)
+			If set to <= 0 then no action is performed.
+			Setting to < 1 second is counterproductive — bigcache has a one second resolution.`,
+			Value: 1 * time.Minute,
+		},
+		&cli.BoolFlag{
+			Name:  "cache-verbose",
+			Usage: "prints information about additional memory allocation",
+		},
+		&cli.IntFlag{
+			Name: "cache-max-size",
+			Usage: `cache will not allocate more memory than this limit, value in MB
+			if value is reached then the oldest entries can be overridden for the new ones
+			0 value means no size limit`,
+			Value: 1024,
 		},
 	}
 
