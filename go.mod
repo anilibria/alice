@@ -3,7 +3,8 @@ module github.com/anilibria/alice
 go 1.19
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.4
+	github.com/allegro/bigcache/v3 v3.1.0
+	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli/v2 v2.27.2
 	github.com/valyala/fasthttp v1.55.0

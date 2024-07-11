@@ -23,7 +23,7 @@ ENV GOARCH=amd64
 
 # skipcq: DOK-DL3018 i'm a badboy, disable this shit
 RUN echo "ready" \
-  && go build -trimpath -ldflags="-s -w -X 'main.version=$MAIN_VERSION' -X 'main.buildtime=$MAIN_BUILDTIME'" -o alice cmd/main.go \
+  && go build -trimpath -ldflags="-s -w -X 'main.version=$MAIN_VERSION' -X 'main.buildtime=$MAIN_BUILDTIME'" -o alice cmd/alice/main.go \
   && apk add --no-cache upx \
   && upx -9 -k alice \
   && echo "nobody:x:65534:65534:nobody:/usr/local/bin:/bin/false" > etc_passwd

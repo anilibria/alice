@@ -8,15 +8,13 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/anilibria/alice/internal/rewriter"
-	"github.com/anilibria/alice/utils"
+	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/gofiber/fiber/v2/middleware/skip"
 	"github.com/rs/zerolog"
 )
 
@@ -131,14 +129,21 @@ func (m *Service) fiberMiddlewareInitialization() {
 func (m *Service) fiberRouterInitialization() {
 
 	// routers initialization
-	rw := rewriter.NewRewriter()
+	// rw := extractor.NewRewriter()
 
 	// check for api initialization
 	// m.fb.Use(skip.New(rw.HandleUnavailable, rw.IsInitialized))
 
-	// check for multipart/formdata content-type
-	m.fb.Use(skip.New(rw.HandleDummy, rw.IsMultipartForm))
+	// // check for multipart/formdata content-type
+	// m.fb.Use(skip.New(rw.HandleDummy, rw.IsMultipartForm))
 
-	// rewrite
-	m.fb.Post("/public/api/index.php", rw.HandleIndex)
+	// // rewrite
+	// m.fb.Post("/public/api/index.php", rw.HandleIndex)
+
+	//
+	//
+	//
+	//
+
+	m.fb.Use(m.proxy.HandleProxyToDst)
 }
