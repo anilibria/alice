@@ -7,3 +7,9 @@ const (
 	CTApplicationUrlencoded
 	CTMultipartFormData
 )
+
+type FastUserValue uint8
+
+const (
+	UVCacheKey FastUserValue = iota
+)
