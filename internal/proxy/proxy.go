@@ -153,9 +153,11 @@ func (m *Proxy) respondFromCache(c *fiber.Ctx, key []byte) (e error) {
 }
 
 func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
-	m.log.Debug().Msgf("DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
-		m.cache.Stats().DelHits, m.cache.Stats().DelMisses, m.cache.Stats().Collisions,
-		m.cache.Stats().Hits, m.cache.Stats().Misses)
+	if m.log.GetLevel() <= zerolog.DebugLevel {
+		m.log.Debug().Msgf("DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+			m.cache.Stats().DelHits, m.cache.Stats().DelMisses, m.cache.Stats().Collisions,
+			m.cache.Stats().Hits, m.cache.Stats().Misses)
+	}
 
 	c.Response().SetBodyRaw(body)
 	c.Response().Header.SetContentType(fiber.MIMEApplicationJSONCharsetUTF8)
