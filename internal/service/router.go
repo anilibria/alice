@@ -34,7 +34,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 	// request id v2.0
 	m.fb.Use(func(c *fiber.Ctx) error {
 		rid := gNuid.Next()
-		c.Set("X-Requiest-Id", rid)
+		c.Set("X-Request-Id", rid)
 		c.Context().SetUserValue("requestid", rid)
 		return c.Next()
 	})
@@ -120,23 +120,11 @@ func (m *Service) fiberMiddlewareInitialization() {
 }
 
 func (m *Service) fiberRouterInitialization() {
-
-	// routers initialization
-	// rw := extractor.NewRewriter()
-
-	// check for api initialization
-	// m.fb.Use(skip.New(rw.HandleUnavailable, rw.IsInitialized))
-
-	// // check for multipart/formdata content-type
-	// m.fb.Use(skip.New(rw.HandleDummy, rw.IsMultipartForm))
-
-	// // rewrite
-	// m.fb.Post("/public/api/index.php", rw.HandleIndex)
-
 	//
-	//
-	//
-	//
+	// ALICE request roadmap:
+
+	// validate request
+	m.fb.Use(m.proxy.MiddlewareValidation)
 
 	// check cache availability and respond if it's ok
 	m.fb.Use(skip.New(m.proxy.HandleProxyToCache, m.proxy.IsRequestCached))

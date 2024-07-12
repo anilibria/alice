@@ -8,7 +8,6 @@ import (
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
-	futils "github.com/gofiber/fiber/v2/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 	"github.com/valyala/fasthttp"
@@ -59,12 +58,7 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 }
 
 func (m *Proxy) ProxyCachedRequest(c *fiber.Ctx) (e error) {
-	var key []byte
-	if key, e = NewExtractor(c).RequestCacheKey(); e != nil {
-		return
-	}
-
-	return m.respondFromCache(c, key)
+	return m.respondFromCache(c)
 }
 
 func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
@@ -98,18 +92,16 @@ func (m *Proxy) doRequest(req *fasthttp.Request, rsp *fasthttp.Response) (e erro
 	return
 }
 
-func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (key []byte, e error) {
-	if key, e = NewExtractor(c).RequestCacheKey(); e != nil {
-		return
+func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
+	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+
+	if m.log.GetLevel() <= zerolog.DebugLevel {
+		m.log.Trace().Msgf("Key: %s", key.UnsafeString())
+		m.log.Debug().Msgf("Del %d, Hit %d, Miss %d",
+			m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}
 
-	m.log.Trace().Msgf("Key: %s", futils.UnsafeString(key))
-	m.log.Debug().Msgf("Del %d, Hit %d, Miss %d",
-		m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
-
-	// TODO
-	// !! UNSAFE PANIC ??
-	if e = m.cache.CacheResponse(futils.UnsafeString(key), rsp.Body()); e != nil {
+	if e = m.cache.CacheResponse(key.UnsafeString(), rsp.Body()); e != nil {
 		return
 	}
 
@@ -117,9 +109,8 @@ func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (key []byte,
 }
 
 func (m *Proxy) cacheAndRespond(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
-	var cachekey []byte
-	if cachekey, e = m.cacheResponse(c, rsp); e == nil {
-		return m.respondFromCache(c, cachekey)
+	if e = m.cacheResponse(c, rsp); e == nil {
+		return m.respondFromCache(c)
 	}
 
 	m.log.Warn().Msgf("could not cache the response: %s", e.Error())
@@ -127,13 +118,10 @@ func (m *Proxy) cacheAndRespond(c *fiber.Ctx, rsp *fasthttp.Response) (e error) 
 }
 
 func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
-	var key []byte
-	if key, e = NewExtractor(c).RequestCacheKey(); e != nil {
-		return
-	}
+	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 
 	var ok bool
-	if ok, e = m.cache.IsResponseCached(futils.UnsafeString(key)); e != nil {
+	if ok, e = m.cache.IsResponseCached(key.UnsafeString()); e != nil {
 		m.log.Warn().Msg("there is problems with cache driver")
 		return
 	} else if !ok {
@@ -143,9 +131,11 @@ func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 	return true, e
 }
 
-func (m *Proxy) respondFromCache(c *fiber.Ctx, key []byte) (e error) {
+func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
+	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+
 	var body []byte
-	if body, e = m.cache.CachedResponse(futils.UnsafeString(key)); e != nil {
+	if body, e = m.cache.CachedResponse(key.UnsafeString()); e != nil {
 		return
 	}
 
