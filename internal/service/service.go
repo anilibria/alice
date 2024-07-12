@@ -16,6 +16,7 @@ import (
 	"github.com/anilibria/alice/internal/proxy"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/nats-io/nuid"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -26,6 +27,8 @@ var (
 
 	gCtx   context.Context
 	gAbort context.CancelFunc
+
+	gNuid *nuid.NUID
 )
 
 type Service struct {
@@ -40,7 +43,7 @@ type Service struct {
 }
 
 func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
-	gCli, gLog = c, l
+	gCli, gLog, gNuid = c, l, nuid.New()
 
 	service := new(Service)
 	service.syslogWriter = s

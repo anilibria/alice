@@ -136,11 +136,6 @@ func main() {
 		// },
 
 		// rewriter settings
-		&cli.StringFlag{
-			Name:  "rewriter-response-header",
-			Usage: "header for parsed payload",
-			Value: "X-Parsed-Form",
-		},
 
 		// proxy settings
 		&cli.StringFlag{
@@ -191,7 +186,7 @@ func main() {
 		&cli.IntFlag{
 			Name:  "cache-shards",
 			Usage: "number of shards (must be a power of 2)",
-			Value: 1024,
+			Value: 512,
 		},
 		&cli.DurationFlag{
 			Name:  "cache-life-window",
@@ -204,10 +199,6 @@ func main() {
 			If set to <= 0 then no action is performed.
 			Setting to < 1 second is counterproductive — bigcache has a one second resolution.`,
 			Value: 1 * time.Minute,
-		},
-		&cli.BoolFlag{
-			Name:  "cache-verbose",
-			Usage: "prints information about additional memory allocation",
 		},
 		&cli.IntFlag{
 			Name: "cache-max-size",

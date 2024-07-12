@@ -48,46 +48,23 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 	req := m.acquireRewritedRequest(c)
 	defer fasthttp.ReleaseRequest(req)
 
-	if e = m.cachedResponse(c); e == nil {
-		return
-	}
-
-	m.log.Trace().Msg("cachedResponse - " + e.Error())
-
 	rsp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(rsp)
 
-	if e = m.doRequest(c, req, rsp); e != nil {
+	if e = m.doRequest(req, rsp); e != nil {
 		return
 	}
 
-	return m.cacheResponse(c, rsp)
+	return m.cacheAndRespond(c, rsp)
 }
 
-func (m *Proxy) cachedResponse(c *fiber.Ctx) (e error) {
-
+func (m *Proxy) ProxyCachedRequest(c *fiber.Ctx) (e error) {
 	var key []byte
 	if key, e = NewExtractor(c).RequestCacheKey(); e != nil {
 		return
 	}
 
-	// var ok bool
-	// if ok, e = m.cache.IsResponseCached(string(key)); e != nil || !ok {
-	// 	return
-	// }
-
-	var body []byte
-	if body, e = m.cache.CachedResponse(string(key)); e != nil {
-		return
-	}
-
-	fmt.Println(futils.UnsafeString(key))
-	fmt.Println(futils.UnsafeString(body))
-
-	c.Response().SetBodyRaw(body)
-	c.Response().SetStatusCode(fiber.StatusOK)
-
-	return
+	return m.respondFromCache(c, key)
 }
 
 func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
@@ -102,7 +79,7 @@ func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
 	return req
 }
 
-func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Response) (e error) {
+func (m *Proxy) doRequest(req *fasthttp.Request, rsp *fasthttp.Response) (e error) {
 	if e = m.client.Do(req, rsp); e != nil {
 		return
 	}
@@ -110,24 +87,18 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 	status, body := rsp.StatusCode(), rsp.Body()
 
 	if status < fasthttp.StatusOK && status >= fasthttp.StatusInternalServerError {
-		e = errors.New(fmt.Sprintf("proxy server respond with status %d", status))
+		e = fmt.Errorf("proxy server respond with status %d", status)
 		return
 	}
 
 	if len(body) == 0 {
 		e = errors.New("proxy server respond with nil body")
-		return
 	}
 
-	rsp.Header.CopyTo(&c.Response().Header)
-
-	c.Response().SetBodyRaw(body)
-	c.Response().SetStatusCode(status)
 	return
 }
 
-func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
-	var key []byte
+func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (key []byte, e error) {
 	if key, e = NewExtractor(c).RequestCacheKey(); e != nil {
 		return
 	}
@@ -136,14 +107,57 @@ func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 	m.log.Debug().Msgf("Del %d, Hit %d, Miss %d",
 		m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
 
-	fmt.Println(futils.UnsafeString(rsp.Body()))
-
+	// TODO
 	// !! UNSAFE PANIC ??
-	// !! UNSAFE PANIC ??
-	// futils.UnsafeString(key)
-	if e = m.cache.CacheResponse(string(key), rsp.Body()); e != nil {
+	if e = m.cache.CacheResponse(futils.UnsafeString(key), rsp.Body()); e != nil {
 		return
 	}
 
 	return
+}
+
+func (m *Proxy) cacheAndRespond(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
+	var cachekey []byte
+	if cachekey, e = m.cacheResponse(c, rsp); e == nil {
+		return m.respondFromCache(c, cachekey)
+	}
+
+	m.log.Warn().Msgf("could not cache the response: %s", e.Error())
+	return m.respondWithStatus(c, rsp.Body(), rsp.StatusCode())
+}
+
+func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
+	var key []byte
+	if key, e = NewExtractor(c).RequestCacheKey(); e != nil {
+		return
+	}
+
+	var ok bool
+	if ok, e = m.cache.IsResponseCached(futils.UnsafeString(key)); e != nil {
+		m.log.Warn().Msg("there is problems with cache driver")
+		return
+	} else if !ok {
+		return
+	}
+
+	return true, e
+}
+
+func (m *Proxy) respondFromCache(c *fiber.Ctx, key []byte) (e error) {
+	var body []byte
+	if body, e = m.cache.CachedResponse(futils.UnsafeString(key)); e != nil {
+		return
+	}
+
+	return m.respondWithStatus(c, body, fiber.StatusOK)
+}
+
+func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
+	m.log.Debug().Msgf("DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+		m.cache.Stats().DelHits, m.cache.Stats().DelMisses, m.cache.Stats().Collisions,
+		m.cache.Stats().Hits, m.cache.Stats().Misses)
+
+	c.Response().SetBodyRaw(body)
+	c.Response().Header.SetContentType(fiber.MIMEApplicationJSONCharsetUTF8)
+	return c.SendStatus(status)
 }

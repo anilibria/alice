@@ -8,13 +8,12 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/fiber/v2/middleware/skip"
 	"github.com/rs/zerolog"
 )
 
@@ -32,12 +31,11 @@ func (m *Service) fiberMiddlewareInitialization() {
 		},
 	}))
 
-	// request id
-	m.fb.Use(requestid.New())
-
-	// insert payload for futher processing
+	// request id v2.0
 	m.fb.Use(func(c *fiber.Ctx) error {
-		c.Locals(utils.FLKRewriterHeader, gCli.String("rewriter-response-header"))
+		rid := gNuid.Next()
+		c.Set("X-Requiest-Id", rid)
+		c.Context().SetUserValue("requestid", rid)
 		return c.Next()
 	})
 
@@ -69,16 +67,12 @@ func (m *Service) fiberMiddlewareInitialization() {
 			status, lvl = err.Code, zerolog.WarnLevel
 		}
 
-		// get rewriter payload
-		rpayload := c.Response().Header.Peek(c.Locals(utils.FLKRewriterHeader).(string))
-
 		rlog(c).WithLevel(lvl).
 			Int("status", status).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
 			Str("ip", c.IP()).
 			Dur("latency", elapsed).
-			Str("payload", string(rpayload)).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
 		rsyslog(c).WithLevel(lvl).
 			Int("status", status).
@@ -86,7 +80,6 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Str("path", c.Path()).
 			Str("ip", c.IP()).
 			Dur("latency", elapsed).
-			Str("payload", string(rpayload)).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
 
 		return
@@ -145,5 +138,9 @@ func (m *Service) fiberRouterInitialization() {
 	//
 	//
 
+	// check cache availability and respond if it's ok
+	m.fb.Use(skip.New(m.proxy.HandleProxyToCache, m.proxy.IsRequestCached))
+
+	// proxy request to upstream
 	m.fb.Use(m.proxy.HandleProxyToDst)
 }
