@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 
 	"github.com/allegro/bigcache/v3"
 	"github.com/anilibria/alice/internal/utils"
@@ -32,12 +33,11 @@ func NewCache(c context.Context) (cache *Cache, e error) {
 		CleanWindow: cli.Duration("cache-clean-window"),
 
 		MaxEntriesInWindow: 1000 * 10 * 60,
-		MaxEntrySize:       4096,
+		MaxEntrySize:       32 * 1024,
 
-		Verbose: cli.Bool("cache-verbose"),
-
-		// Ignored if OnRemove is specified.
-		OnRemoveWithReason: cache.bcOnRemoveWithReason,
+		// not worked?
+		Verbose: log.GetLevel() == zerolog.TraceLevel,
+		Logger:  log,
 	})
 
 	return
@@ -47,13 +47,13 @@ func (m *Cache) Bootstrap() {
 	<-m.done()
 	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 
+	m.log.Info().Msgf("Serving SUMMARY: DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+		m.Stats().DelHits, m.Stats().DelMisses, m.Stats().Collisions,
+		m.Stats().Hits, m.Stats().Misses)
+
 	if e := m.Close(); e != nil {
 		m.log.Error().Msg(e.Error())
 	}
-}
-
-func (m *Cache) bcOnRemoveWithReason(key string, entry []byte, reason bigcache.RemoveReason) {
-	m.log.Debug().Msgf("cache_manager: key %s was dropped with %d", key, reason)
 }
 
 func (m *Cache) CacheResponse(key string, payload []byte) error {
@@ -64,14 +64,12 @@ func (m *Cache) CachedResponse(key string) ([]byte, error) {
 	return m.Get(key)
 }
 
-func (m *Cache) IsResponseCached(key string) (cached bool, e error) {
-	if _, e = m.Get(key); e != nil {
-		cached = true
-		return
-	} else if e == bigcache.ErrEntryNotFound {
-		e = nil
-		return
-	} else {
+func (m *Cache) IsResponseCached(key string) (_ bool, e error) {
+	if _, e = m.Get(key); e != nil && errors.Is(e, bigcache.ErrEntryNotFound) {
+		return false, nil
+	} else if e != nil {
 		return
 	}
+
+	return true, nil
 }
