@@ -10,6 +10,7 @@ import (
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
 
 	futils "github.com/gofiber/fiber/v2/utils"
@@ -107,7 +108,9 @@ func (m *Extractor) EncodeFormData() (_ []byte, e error) {
 
 	sort.Strings(keys)
 
-	var buf bytes.Buffer // ? sync.Pool
+	bb := bytebufferpool.Get()
+	defer bytebufferpool.Put(bb)
+
 	for _, v := range keys {
 		val := m.FormValue(v)
 		if val == "" {
@@ -115,8 +118,8 @@ func (m *Extractor) EncodeFormData() (_ []byte, e error) {
 			continue
 		}
 
-		buf.WriteString(fmt.Sprintf("%s=%s&", v, m.FormValue(v)))
+		bb.WriteString(fmt.Sprintf("%s=%s&", v, m.FormValue(v)))
 	}
 
-	return buf.Bytes()[:buf.Len()-1], e
+	return bb.B[:bb.Len()-1], e
 }
