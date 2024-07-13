@@ -36,7 +36,7 @@ func NewCache(c context.Context) (cache *Cache, e error) {
 		MaxEntrySize:       32 * 1024,
 
 		// not worked?
-		Verbose: log.GetLevel() == zerolog.TraceLevel,
+		Verbose: zerolog.GlobalLevel() == zerolog.TraceLevel,
 		Logger:  log,
 	})
 

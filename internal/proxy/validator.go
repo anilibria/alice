@@ -23,7 +23,7 @@ type Validator struct {
 	cacheKey *Key
 }
 
-func (m *Proxy) NewValidator(c *fiber.Ctx) *Validator {
+func (*Proxy) NewValidator(c *fiber.Ctx) *Validator {
 	return &Validator{
 		contentTypeRaw: c.Request().Header.ContentType(),
 
