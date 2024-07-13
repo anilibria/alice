@@ -75,7 +75,6 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 
 		RequestMethods: []string{
 			fiber.MethodHead,
-			fiber.MethodGet,
 			fiber.MethodPost,
 		},
 

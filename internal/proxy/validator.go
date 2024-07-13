@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
-	"sort"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	futils "github.com/gofiber/fiber/v2/utils"
-	"github.com/valyala/bytebufferpool"
+	"github.com/rs/zerolog"
 	"github.com/valyala/fasthttp"
 )
 
@@ -19,6 +18,8 @@ type Validator struct {
 
 	contentType    utils.RequestContentType
 	contentTypeRaw []byte
+
+	requestArgs *fasthttp.Args
 
 	cacheKey *Key
 }
@@ -43,10 +44,22 @@ func (m *Validator) ValidateRequest() (e error) {
 			futils.UnsafeString(m.contentTypeRaw))
 	}
 
+	m.requestArgs = fasthttp.AcquireArgs()
+	defer fasthttp.ReleaseArgs(m.requestArgs)
+
 	if e = m.extractRequestKey(); e != nil {
 		return
 	}
 
+	if !m.isArgsWhitelisted() {
+		return errors.New("invalid api arguments detected")
+	}
+
+	if !m.isQueryWhitelisted() {
+		return errors.New("invalid query detected")
+	}
+
+	m.cacheKey.Put(m.requestArgs.QueryString())
 	m.Context().SetUserValue(utils.UVCacheKey, m.cacheKey)
 	return
 }
@@ -88,20 +101,19 @@ func (m *Validator) extractRequestKey() (e error) {
 	return
 }
 
-func (m *Validator) encodeQueryArgs() error {
-	rgs := fasthttp.AcquireArgs()
-	defer fasthttp.ReleaseArgs(rgs)
+func (m *Validator) encodeQueryArgs() (_ error) {
+	if len(m.Body()) == 0 {
+		return errors.New("empty body received")
+	}
+	m.requestArgs.ParseBytes(m.Body())
 
-	rgs.ParseBytes(m.Body())
-	if rgs.Len() == 0 {
+	if m.requestArgs.Len() == 0 {
 		return errors.New("there is no args after query parsing")
 	}
 
 	// ?
-	rgs.Sort(bytes.Compare)
-
-	m.cacheKey.Put(rgs.QueryString())
-	return nil
+	m.requestArgs.Sort(bytes.Compare)
+	return
 }
 
 func (m *Validator) encodeFormData() (e error) {
@@ -113,33 +125,57 @@ func (m *Validator) encodeFormData() (e error) {
 	}
 	defer m.Request().RemoveMultipartFormFiles()
 
-	var keys []string
-	for k := range form.Value {
-		keys = append(keys, k)
+	if len(form.Value) == 0 {
+		return errors.New("there is no form-data args after form parsing")
 	}
 
-	if len(keys) == 0 {
-		return errors.New("form len is 0, seems it's empty")
+	for k, v := range form.Value {
+		m.requestArgs.Add(k, v[0])
 	}
 
-	sort.Strings(keys)
+	// TODO - with go1.21.0 we can use:
+	//
+	// m.requestArgs.Sort(func(x, y []byte) int {
+	// 	return cmp.Compare(strings.ToLower(a), strings.ToLower(b))
+	// })
+	//
+	// ? but in 1.19
+	m.requestArgs.Sort(bytes.Compare)
 
-	bb := bytebufferpool.Get()
-	defer bytebufferpool.Put(bb)
+	// more info - https://pkg.go.dev/slices#SortFunc
+	return
+}
 
-	for _, v := range keys {
-		val := m.FormValue(v)
-		if val == "" {
-			// !!!
-			// !!!
-			// TODO
-			// rlog.Warn().Msg("BUG: form value is empty, key - " + v)
-			continue
+func (m *Validator) isArgsWhitelisted() (_ bool) {
+	// TODO too much allocations here:
+	declinedKeys := make(chan []byte, m.requestArgs.Len())
+
+	m.requestArgs.VisitAll(func(key, value []byte) {
+		if _, ok := postArgsWhitelist[futils.UnsafeString(key)]; !ok {
+			declinedKeys <- key
+		}
+	})
+	close(declinedKeys)
+
+	if len(declinedKeys) != 0 {
+		if zerolog.GlobalLevel() < zerolog.InfoLevel {
+			for key := range declinedKeys {
+				fmt.Println("Invalid key detected - " + futils.UnsafeString(key))
+			}
 		}
 
-		bb.WriteString(fmt.Sprintf("%s=%s&", v, m.FormValue(v)))
+		return
 	}
 
-	m.cacheKey.Put(bb.B[:bb.Len()-1])
+	return true
+}
+
+func (m *Validator) isQueryWhitelisted() (ok bool) {
+	var query []byte
+	if query = m.requestArgs.PeekBytes([]byte("query")); len(query) == 0 {
+		return true
+	}
+
+	_, ok = queryWhitelist[futils.UnsafeString(query)]
 	return
 }
