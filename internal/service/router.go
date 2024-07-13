@@ -133,10 +133,9 @@ func (m *Service) fiberMiddlewareInitialization() {
 func (m *Service) fiberRouterInitialization() {
 	//
 	// ALICE apiv1 requests proxying lifecycle:
-	apiv1 := m.fb.Group("/public/api")
 
 	// step1 - validate request
-	apiv1.Use(m.proxy.MiddlewareValidation)
+	apiv1 := m.fb.Group("/public/api", m.proxy.MiddlewareValidation)
 
 	// step2 - check cache availability and try to respond with it
 	apiv1.Use(skip.New(m.proxy.HandleProxyToCache, m.proxy.IsRequestCached))
