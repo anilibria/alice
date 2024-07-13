@@ -16,7 +16,6 @@ import (
 	"github.com/anilibria/alice/internal/proxy"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
-	"github.com/nats-io/nuid"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -27,8 +26,6 @@ var (
 
 	gCtx   context.Context
 	gAbort context.CancelFunc
-
-	gNuid *nuid.NUID
 )
 
 type Service struct {
@@ -38,12 +35,14 @@ type Service struct {
 	proxy *proxy.Proxy
 	cache *cache.Cache
 
-	syslogWriter   io.Writer
-	accesslogLevel zerolog.Level
+	syslogWriter io.Writer
+
+	pprofPrefix string
+	pprofSecret []byte
 }
 
 func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
-	gCli, gLog, gNuid = c, l, nuid.New()
+	gCli, gLog = c, l
 
 	service := new(Service)
 	service.syslogWriter = s
@@ -75,7 +74,6 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 		RequestMethods: []string{
 			fiber.MethodHead,
 			fiber.MethodGet,
-			fiber.MethodOptions,
 			fiber.MethodPost,
 		},
 
@@ -141,11 +139,6 @@ func (m *Service) Bootstrap() (e error) {
 	defer gAbort()
 
 	// BOOTSTRAP SECTION:
-	// parse log level for fiber logs
-	if m.accesslogLevel, e = zerolog.ParseLevel(gCli.String("http-access-logs-level")); e != nil {
-		return
-	}
-
 	// cache module
 	if m.cache, e = cache.NewCache(gCtx); e != nil {
 		return
@@ -221,8 +214,4 @@ LOOP:
 
 func rlog(c *fiber.Ctx) *zerolog.Logger {
 	return c.Locals("logger").(*zerolog.Logger)
-}
-
-func rsyslog(c *fiber.Ctx) (l *zerolog.Logger) {
-	return c.Locals("syslogger").(*zerolog.Logger)
 }

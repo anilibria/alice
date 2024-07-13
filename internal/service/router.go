@@ -1,16 +1,17 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"time"
 
+	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
-	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/skip"
@@ -18,6 +19,30 @@ import (
 )
 
 func (m *Service) fiberMiddlewareInitialization() {
+	// request id 3.0
+	m.fb.Use(func(c *fiber.Ctx) error {
+		c.Set("X-Request-Id", strconv.FormatUint(c.Context().ID(), 10))
+		return c.Next()
+	})
+
+	// prefixed logger initialization
+	// - we send logs in syslog and stdout by default,
+	// - but if access-log-stdout is 0 we use syslog output only
+	m.fb.Use(func(c *fiber.Ctx) error {
+		logger, spanid := gLog.With().Logger().Level(utils.HTTPAccessLogLevel),
+			c.Context().ID()
+
+		logger.UpdateContext(func(zc zerolog.Context) zerolog.Context {
+			return zc.Uint64("id", spanid)
+		})
+
+		if zerolog.GlobalLevel() > zerolog.DebugLevel && zerolog.GlobalLevel() < zerolog.NoLevel {
+			logger = logger.Output(m.syslogWriter)
+		}
+
+		c.Locals("logger", &logger)
+		return c.Next()
+	})
 
 	// panic recover for all handlers
 	m.fb.Use(recover.New(recover.Config{
@@ -31,50 +56,17 @@ func (m *Service) fiberMiddlewareInitialization() {
 		},
 	}))
 
-	// request id v2.0
-	m.fb.Use(func(c *fiber.Ctx) error {
-		rid := gNuid.Next()
-		c.Set("X-Request-Id", rid)
-		c.Context().SetUserValue("requestid", rid)
-		return c.Next()
-	})
-
-	// prefixed logger initialization
-	// - we send logs in syslog and stdout by default,
-	// - but if access-log-stdout is 0 we use syslog output only
-	m.fb.Use(func(c *fiber.Ctx) error {
-		logger := gLog.With().Str("id", c.Locals("requestid").(string)).Logger().
-			Level(m.accesslogLevel)
-		syslogger := logger.Output(m.syslogWriter)
-
-		if zerolog.GlobalLevel() > zerolog.DebugLevel {
-			logger = logger.Output(io.Discard)
-		}
-
-		c.Locals("logger", &logger)
-		c.Locals("syslogger", &syslogger)
-		return c.Next()
-	})
-
 	// time collector + logger
 	m.fb.Use(func(c *fiber.Ctx) (e error) {
 		started, e := time.Now(), c.Next()
-		stopped := time.Now()
-		elapsed := stopped.Sub(started).Round(time.Microsecond)
+		elapsed := time.Since(started).Round(time.Microsecond)
 
-		status, lvl, err := c.Response().StatusCode(), m.accesslogLevel, new(fiber.Error)
+		status, lvl, err := c.Response().StatusCode(), utils.HTTPAccessLogLevel, &fiber.Error{}
 		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {
 			status, lvl = err.Code, zerolog.WarnLevel
 		}
 
 		rlog(c).WithLevel(lvl).
-			Int("status", status).
-			Str("method", c.Method()).
-			Str("path", c.Path()).
-			Str("ip", c.IP()).
-			Dur("latency", elapsed).
-			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
-		rsyslog(c).WithLevel(lvl).
 			Int("status", status).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
@@ -105,13 +97,32 @@ func (m *Service) fiberMiddlewareInitialization() {
 	// 	Storage: m.fbstor,
 	// }))
 
-	// debug
+	// pprof profiler
+	// manual:
+	// 	curl -o profile.out https://host/debug/pprof -H 'X-Authorization: $TOKEN'
+	// 	go tool pprof profile.out
 	if gCli.Bool("http-pprof-enable") {
-		m.fb.Use(pprof.New())
-	}
+		m.pprofPrefix = gCli.String("http-pprof-prefix")
+		m.pprofSecret = []byte(gCli.String("http-pprof-secret"))
 
-	// favicon disable
-	m.fb.Use(favicon.New(favicon.ConfigDefault))
+		var pprofNext func(*fiber.Ctx) bool
+		if len(m.pprofSecret) != 0 {
+			pprofNext = func(c *fiber.Ctx) (_ bool) {
+				isecret := c.Context().Request.Header.Peek("x-pprof-secret")
+
+				if len(isecret) == 0 {
+					return
+				}
+
+				return !bytes.Equal(m.pprofSecret, isecret)
+			}
+		}
+
+		m.fb.Use(pprof.New(pprof.Config{
+			Next:   pprofNext,
+			Prefix: gCli.String("http-pprof-prefix"),
+		}))
+	}
 
 	// compress support
 	m.fb.Use(compress.New(compress.Config{
@@ -121,14 +132,15 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 func (m *Service) fiberRouterInitialization() {
 	//
-	// ALICE request roadmap:
+	// ALICE apiv1 requests proxying lifecycle:
+	apiv1 := m.fb.Group("/public/api")
 
-	// validate request
-	m.fb.Use(m.proxy.MiddlewareValidation)
+	// step1 - validate request
+	apiv1.Use(m.proxy.MiddlewareValidation)
 
-	// check cache availability and respond if it's ok
-	m.fb.Use(skip.New(m.proxy.HandleProxyToCache, m.proxy.IsRequestCached))
+	// step2 - check cache availability and try to respond with it
+	apiv1.Use(skip.New(m.proxy.HandleProxyToCache, m.proxy.IsRequestCached))
 
-	// proxy request to upstream
-	m.fb.Use(m.proxy.HandleProxyToDst)
+	// step3 - proxy request to upstream
+	apiv1.Use(m.proxy.HandleProxyToDst)
 }

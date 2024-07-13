@@ -62,16 +62,10 @@ func main() {
 		// common settings
 		&cli.StringFlag{
 			Name:    "log-level",
-			Aliases: []string{"l"},
-			Value:   "debug",
+			Value:   "info",
 			Usage:   "levels: trace, debug, info, warn, err, panic, disabled",
+			Aliases: []string{"l"},
 			EnvVars: []string{"LOG_LEVEL"},
-		},
-		&cli.BoolFlag{
-			Name:               "quite",
-			Aliases:            []string{"q"},
-			Usage:              "equivalent to --log-level=quite",
-			DisableDefaultText: true,
 		},
 
 		// common settings : syslog
@@ -116,9 +110,12 @@ func main() {
 			DisableDefaultText: true,
 		},
 		&cli.StringFlag{
-			Name:  "http-access-logs-level",
-			Usage: "set logger level for access-log logs",
-			Value: zerolog.LevelDebugValue,
+			Name:  "http-pprof-prefix",
+			Usage: "it should start with (but not end with) a slash. Example: '/test'",
+		},
+		&cli.StringFlag{
+			Name:  "http-pprof-secret",
+			Usage: "define static secret in x-pprof-secret header for avoiding unauthorized access",
 		},
 
 		// limiter settings
@@ -214,11 +211,7 @@ func main() {
 		if lvl, e = zerolog.ParseLevel(c.String("log-level")); e != nil {
 			log.Fatal().Err(e).Msg("")
 		}
-
 		zerolog.SetGlobalLevel(lvl)
-		if c.Bool("quite") {
-			zerolog.SetGlobalLevel(zerolog.Disabled)
-		}
 
 		var syslogWriter = io.Discard
 		if len(c.String("syslog-server")) != 0 {

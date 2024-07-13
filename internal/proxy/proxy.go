@@ -95,7 +95,7 @@ func (m *Proxy) doRequest(req *fasthttp.Request, rsp *fasthttp.Response) (e erro
 func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 
-	if m.log.GetLevel() <= zerolog.DebugLevel {
+	if zerolog.GlobalLevel() < zerolog.InfoLevel {
 		m.log.Trace().Msgf("Key: %s", key.UnsafeString())
 		m.log.Debug().Msgf("Del %d, Hit %d, Miss %d",
 			m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
@@ -143,8 +143,8 @@ func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 }
 
 func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
-	if m.log.GetLevel() <= zerolog.DebugLevel {
-		m.log.Debug().Msgf("DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+	if zerolog.GlobalLevel() < zerolog.InfoLevel {
+		m.log.Debug().Msgf("Stats trace : DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
 			m.cache.Stats().DelHits, m.cache.Stats().DelMisses, m.cache.Stats().Collisions,
 			m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}

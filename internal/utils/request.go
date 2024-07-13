@@ -1,5 +1,9 @@
 package utils
 
+import "github.com/rs/zerolog"
+
+const HTTPAccessLogLevel = zerolog.InfoLevel
+
 type RequestContentType uint8
 
 const (
