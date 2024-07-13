@@ -12,13 +12,13 @@ type ProxyClient struct {
 }
 
 func NewClient(c *cli.Context) *ProxyClient {
-	appname := fmt.Sprintf("%s/%s", c.App.Name, c.App.Version)
-
 	return &ProxyClient{
 		HostClient: &fasthttp.HostClient{
-			Addr: c.String("proxy-dst-server"),
+			// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent#crawler_and_bot_ua_strings
+			Name: fmt.Sprintf("Mozilla/5.0 (compatible; %s/%s; +https://anilibria.top/support)",
+				c.App.Name, c.App.Version),
 
-			Name: "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0 " + appname,
+			Addr: c.String("proxy-dst-server"),
 
 			MaxConns: c.Int("proxy-max-conns-per-host"),
 
