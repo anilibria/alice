@@ -29,6 +29,8 @@ var (
 )
 
 type Service struct {
+	loopError error
+
 	fb *fiber.App
 	// fbstor fiber.Storage
 
@@ -166,6 +168,7 @@ func (m *Service) Bootstrap() (e error) {
 			return
 		} else if e != nil {
 			gLog.Error().Err(e).Msg("fiber internal error")
+			echan <- e
 		}
 	})
 
@@ -176,10 +179,10 @@ func (m *Service) Bootstrap() (e error) {
 	gLog.Info().Msg("ready...")
 
 	wg.Wait()
-	return nil
+	return m.loopError
 }
 
-func (m *Service) loop(_ chan error, done func()) {
+func (m *Service) loop(errs chan error, done func()) {
 	defer done()
 
 	kernSignal := make(chan os.Signal, 1)
@@ -195,10 +198,12 @@ LOOP:
 			gLog.Info().Msg("kernel signal has been caught; initiate application closing...")
 			gAbort()
 			break LOOP
-		// case err := <-errs:
-		// 	gLog.Error().Err(err).Msg("there are internal errors from one of application submodule")
-		// 	gLog.Info().Msg("calling abort()...")
-		// 	gAbort()
+		case err := <-errs:
+			gLog.Debug().Err(err).Msg("there are internal errors from one of application submodule")
+			m.loopError = err
+
+			gLog.Info().Msg("calling abort()...")
+			gAbort()
 		case <-gCtx.Done():
 			gLog.Info().Msg("internal abort() has been caught; initiate application closing...")
 			break LOOP

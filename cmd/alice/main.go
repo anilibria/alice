@@ -22,11 +22,11 @@ var version = "devel" // -ldflags="-X main.version=X.X.X"
 var buildtime = "never"
 
 func main() {
-	retcode := 0
-	defer func() { os.Exit(retcode) }()
+	var exitcode int
+	defer func() { cli.OsExiter(exitcode) }()
 
 	// non-blocking writer
-	dwr := diode.NewWriter(os.Stdout, 1000, 10*time.Millisecond, func(missed int) {
+	dwr := diode.NewWriter(os.Stdout, 1024, 10*time.Millisecond, func(missed int) {
 		fmt.Fprintf(os.Stderr, "diodes dropped %d messages; check your log-rate, please\n", missed)
 	})
 	defer dwr.Close()
@@ -48,9 +48,12 @@ func main() {
 		Aliases:            []string{"V"},
 		DisableDefaultText: true,
 	}
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Printf("%s\t%s\n", version, buildtime)
+	}
 
 	app.Name = "alice"
-	app.Version = fmt.Sprintf("%s\t%s", version, buildtime)
+	app.Version = version
 	app.Copyright = "(c) 2024 mindhunter86\nwith love for AniLibria project"
 	app.Usage = "AniLibria legacy api cache service"
 	app.Authors = append(app.Authors, &cli.Author{
@@ -254,9 +257,10 @@ func main() {
 
 	if e := app.Run(os.Args); e != nil {
 		log.WithLevel(zerolog.FatalLevel).Msg(e.Error())
-		retcode = 1
+		exitcode = 1
 	}
 
+	// TODO avoid this shit
 	// fucking diode was no `wait` method, so we need to use this `250` shit
 	log.Debug().Msg("waiting for diode buf")
 	time.Sleep(250 * time.Millisecond)
