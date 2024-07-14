@@ -47,7 +47,7 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 	rsp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(rsp)
 
-	if e = m.doRequest(req, rsp); e != nil {
+	if e = m.doRequest(c, req, rsp); e != nil {
 		return
 	}
 
@@ -79,23 +79,34 @@ func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
 	return req
 }
 
-func (m *Proxy) doRequest(req *fasthttp.Request, rsp *fasthttp.Response) (e error) {
+func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Response) (e error) {
 	if e = m.client.Do(req, rsp); e != nil {
 		return
 	}
 
 	status, body := rsp.StatusCode(), rsp.Body()
 
-	if status < fasthttp.StatusOK && status >= fasthttp.StatusInternalServerError {
+	if status < fasthttp.StatusOK || status >= fasthttp.StatusInternalServerError {
 		e = fmt.Errorf("proxy server respond with status %d", status)
+		return
+	} else if status >= fiber.StatusBadRequest {
+		rlog(c).Warn().Msgf("status %d detected for request, bypass cache", status)
+
+		m.bypassCache(c)
 		return
 	}
 
 	if len(body) == 0 {
 		e = errors.New("proxy server respond with nil body")
+		rlog(c).Trace().Msg(req.String())
 	}
 
 	return
+}
+
+func (*Proxy) bypassCache(c *fiber.Ctx) {
+	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+	key.Reset()
 }
 
 func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
