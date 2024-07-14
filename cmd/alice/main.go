@@ -110,7 +110,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "http-read-timeout",
-			Value: 5 * time.Second,
+			Value: 10 * time.Second,
 		},
 		&cli.DurationFlag{
 			Name:  "http-write-timeout",
@@ -118,7 +118,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "http-idle-timeout",
-			Value: 5 * time.Minute,
+			Value: 10 * time.Minute,
 		},
 		&cli.BoolFlag{
 			Name:               "http-pprof-enable",
@@ -165,7 +165,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "proxy-read-timeout",
-			Value: 5 * time.Second,
+			Value: 10 * time.Second,
 		},
 		&cli.DurationFlag{
 			Name:  "proxy-write-timeout",
@@ -201,7 +201,7 @@ func main() {
 		&cli.IntFlag{
 			Name:  "cache-shards",
 			Usage: "number of shards (must be a power of 2)",
-			Value: 512,
+			Value: 1024,
 		},
 		&cli.DurationFlag{
 			Name:  "cache-life-window",
