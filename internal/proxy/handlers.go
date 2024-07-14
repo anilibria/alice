@@ -5,7 +5,7 @@ import "github.com/gofiber/fiber/v2"
 func (m *Proxy) IsRequestCached(c *fiber.Ctx) (ok bool) {
 	var e error
 	if ok, e = m.canRespondFromCache(c); e != nil {
-		m.log.Warn().Msg(e.Error())
+		rlog(c).Warn().Msg(e.Error())
 	}
 
 	return !ok

@@ -18,8 +18,6 @@ type Proxy struct {
 	config *ProxyConfig
 
 	cache *cache.Cache
-
-	log *zerolog.Logger
 }
 
 type ProxyConfig struct {
@@ -38,8 +36,6 @@ func NewProxy(c context.Context) *Proxy {
 		},
 
 		cache: c.Value(utils.CKCache).(*cache.Cache),
-
-		log: c.Value(utils.CKLogger).(*zerolog.Logger),
 	}
 }
 
@@ -96,8 +92,8 @@ func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 
 	if zerolog.GlobalLevel() < zerolog.InfoLevel {
-		m.log.Trace().Msgf("Key: %s", key.UnsafeString())
-		m.log.Debug().Msgf("Del %d, Hit %d, Miss %d",
+		rlog(c).Trace().Msgf("Key: %s", key.UnsafeString())
+		rlog(c).Debug().Msgf("Del %d, Hit %d, Miss %d",
 			m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}
 
@@ -113,7 +109,7 @@ func (m *Proxy) cacheAndRespond(c *fiber.Ctx, rsp *fasthttp.Response) (e error) 
 		return m.respondFromCache(c)
 	}
 
-	m.log.Warn().Msgf("could not cache the response: %s", e.Error())
+	rlog(c).Warn().Msgf("could not cache the response: %s", e.Error())
 	return m.respondWithStatus(c, rsp.Body(), rsp.StatusCode())
 }
 
@@ -122,7 +118,7 @@ func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 
 	var ok bool
 	if ok, e = m.cache.IsResponseCached(key.UnsafeString()); e != nil {
-		m.log.Warn().Msg("there is problems with cache driver")
+		rlog(c).Warn().Msg("there is problems with cache driver")
 		return
 	} else if !ok {
 		return
@@ -144,7 +140,7 @@ func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 
 func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
 	if zerolog.GlobalLevel() < zerolog.InfoLevel {
-		m.log.Debug().Msgf("Stats trace : DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+		rlog(c).Debug().Msgf("Stats trace : DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
 			m.cache.Stats().DelHits, m.cache.Stats().DelMisses, m.cache.Stats().Collisions,
 			m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}
