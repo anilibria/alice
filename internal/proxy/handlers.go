@@ -7,6 +7,10 @@ import (
 )
 
 func (m *Proxy) IsRequestCached(c *fiber.Ctx) (ok bool) {
+	if m.IsCacheBypass(c) {
+		return true
+	}
+
 	var e error
 	if ok, e = m.canRespondFromCache(c); e != nil {
 		rlog(c).Warn().Msg(e.Error())

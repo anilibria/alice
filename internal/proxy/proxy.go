@@ -51,11 +51,20 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 		return
 	}
 
-	return m.cacheAndRespond(c, rsp)
+	if !m.IsCacheBypass(c) {
+		return m.cacheAndRespond(c, rsp)
+	}
+
+	return m.respondWithStatus(c, rsp.Body(), rsp.StatusCode())
 }
 
 func (m *Proxy) ProxyCachedRequest(c *fiber.Ctx) (e error) {
 	return m.respondFromCache(c)
+}
+
+func (*Proxy) IsCacheBypass(c *fiber.Ctx) bool {
+	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+	return key.Len() == 0
 }
 
 func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {

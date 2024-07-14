@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	futils "github.com/gofiber/fiber/v2/utils"
 	"github.com/rs/zerolog"
+	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
 )
 
@@ -22,6 +23,8 @@ type Validator struct {
 	requestArgs *fasthttp.Args
 
 	cacheKey *Key
+
+	customs CustomHeaders
 }
 
 func (*Proxy) NewValidator(c *fiber.Ctx) *Validator {
@@ -44,6 +47,8 @@ func (m *Validator) ValidateRequest() (e error) {
 			futils.UnsafeString(m.contentTypeRaw))
 	}
 
+	m.validateCustomHeaders()
+
 	m.requestArgs = fasthttp.AcquireArgs()
 	defer fasthttp.ReleaseArgs(m.requestArgs)
 
@@ -59,7 +64,10 @@ func (m *Validator) ValidateRequest() (e error) {
 		return errors.New("invalid query detected")
 	}
 
-	m.cacheKey.Put(m.requestArgs.QueryString())
+	// delete or update cache key for futher request processing
+	// controlled by CustomHeaders
+	m.postValidationMutate(m.requestArgs.QueryString())
+
 	m.Context().SetUserValue(utils.UVCacheKey, m.cacheKey)
 	return
 }
@@ -88,9 +96,58 @@ func (m *Validator) validateContentType() utils.RequestContentType {
 	default:
 		return utils.CTInvalid
 	}
+
+}
+
+func (m *Validator) validateCustomHeaders() {
+
+	for header, ch := range Stoch {
+		val := m.Request().Header.PeekBytes(futils.UnsafeBytes(header))
+		if len(val) != 0 {
+			m.customs = m.customs | ch
+			rlog(m.Ctx).Trace().Msg("found custom header " + header)
+		}
+	}
+
+	// some another header validation...
+}
+
+func (m *Validator) postValidationMutate(cachekey []byte) {
+	has := func(chflag CustomHeaders) bool {
+		return m.customs&chflag != 0
+	}
+
+	// key is empty, so if we need bypass the cache just return
+	if has(CHCacheBypass) {
+		return
+	}
+
+	// override request cache-key if requested
+	if has(CHCacheKeyOverride) {
+		key := m.Request().Header.Peek(CHtos[CHCacheKeyOverride])
+		m.cacheKey.Put(key)
+		return
+	}
+
+	// mutate request cache-key
+	if has(CHCacheKeyPrefix) || has(CHCacheKeySuffix) {
+		bb := bytebufferpool.Get()
+		defer bytebufferpool.Put(bb)
+
+		bb.Write(m.Request().Header.Peek(CHtos[CHCacheKeyPrefix]))
+		bb.Write(cachekey)
+		bb.Write(m.Request().Header.Peek(CHtos[CHCacheKeySuffix]))
+
+		m.cacheKey.Put(bb.Bytes())
+		return
+	}
+
+	// put key without mutations
+	m.cacheKey.Put(cachekey)
 }
 
 func (m *Validator) extractRequestKey() (e error) {
+	// get requests content-type
 	switch m.contentType {
 	case utils.CTApplicationUrlencoded:
 		e = m.encodeQueryArgs()

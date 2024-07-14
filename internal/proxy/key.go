@@ -25,6 +25,10 @@ func ReleaseKey(key *Key) {
 	keyPool.Put(key)
 }
 
+func (m *Key) Len() int {
+	return len(m.key)
+}
+
 func (m *Key) Reset() {
 	m.key = m.key[:0]
 }
