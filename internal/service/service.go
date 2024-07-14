@@ -93,7 +93,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 				return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 			}
 
-			rlog(c).Error().Msgf("%v", err)
+			rlog(c).Error().Msgf("%+v", err)
 			return c.SendStatus(e.Code)
 		},
 	})
