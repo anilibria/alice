@@ -120,6 +120,18 @@ func main() {
 			Name:  "http-pprof-secret",
 			Usage: "define static secret in x-pprof-secret header for avoiding unauthorized access",
 		},
+		&cli.DurationFlag{
+			Name:  "http-read-timeout",
+			Value: 5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-write-timeout",
+			Value: 5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-idle-timeout",
+			Value: 5 * time.Minute,
+		},
 
 		// limiter settings
 		// &cli.BoolFlag{
@@ -163,7 +175,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "proxy-idle-timeout",
-			Value: 2 * time.Minute,
+			Value: 5 * time.Minute,
 		},
 		&cli.IntFlag{
 			Name:  "proxy-max-idle-conn",
