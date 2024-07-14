@@ -69,7 +69,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Int("status", status).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
-			Str("ip", c.IP()).
+			Str("ip", c.Context().RemoteIP().String()).
 			Dur("latency", elapsed).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
 
