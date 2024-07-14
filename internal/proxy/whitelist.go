@@ -10,6 +10,7 @@ package proxy
 // }
 
 var postArgsWhitelist = map[string]interface{}{
+	// POST api.php
 	"action":  nil,
 	"code":    nil,
 	"filter":  nil,
@@ -19,6 +20,43 @@ var postArgsWhitelist = map[string]interface{}{
 	"perPage": nil,
 	"query":   nil,
 	"rm":      nil,
+
+	// POST func.php - most used
+	"sort":    nil,
+	"xpage":   nil,
+	"finish":  nil,
+	"search":  nil,
+	"current": nil,
+
+	// POST func.php
+	"2fa":                  nil,
+	"announce":             nil,
+	"csrf":                 nil,
+	"csrf_token":           nil,
+	"data":                 nil,
+	"deviceId":             nil,
+	"do":                   nil,
+	"fa2code":              nil,
+	"g-recaptcha-response": nil,
+	"info":                 nil,
+	"key":                  nil,
+	"login":                nil,
+	"mail":                 nil,
+	"mes":                  nil,
+	"newPasswd":            nil,
+	"oldPasswd":            nil,
+	"order0column":         nil,
+	"order0dir":            nil,
+	"passwd":               nil,
+	"recaptcha":            nil,
+	"reset":                nil,
+	"rid":                  nil,
+	"searchvalue":          nil,
+	"url":                  nil,
+	"v":                    nil,
+	"vk":                   nil,
+	"w":                    nil,
+	"width":                nil,
 }
 
 var queryWhitelist = map[string]interface{}{
