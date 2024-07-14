@@ -110,7 +110,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "http-read-timeout",
-			Value: 5 * time.Second,
+			Value: 10 * time.Second,
 		},
 		&cli.DurationFlag{
 			Name:  "http-write-timeout",
@@ -118,7 +118,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "http-idle-timeout",
-			Value: 5 * time.Minute,
+			Value: 10 * time.Minute,
 		},
 		&cli.BoolFlag{
 			Name:               "http-pprof-enable",
@@ -165,7 +165,7 @@ func main() {
 		},
 		&cli.DurationFlag{
 			Name:  "proxy-read-timeout",
-			Value: 5 * time.Second,
+			Value: 10 * time.Second,
 		},
 		&cli.DurationFlag{
 			Name:  "proxy-write-timeout",
@@ -201,7 +201,7 @@ func main() {
 		&cli.IntFlag{
 			Name:  "cache-shards",
 			Usage: "number of shards (must be a power of 2)",
-			Value: 512,
+			Value: 1024,
 		},
 		&cli.DurationFlag{
 			Name:  "cache-life-window",
@@ -221,6 +221,11 @@ func main() {
 			if value is reached then the oldest entries can be overridden for the new ones
 			0 value means no size limit`,
 			Value: 1024,
+		},
+		&cli.IntFlag{
+			Name:  "cache-max-entry-size",
+			Usage: "Max size of entry in bytes. Used only to calculate initial size for cache shards",
+			Value: 128 * 1024,
 		},
 
 		&cli.StringFlag{

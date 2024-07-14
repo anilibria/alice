@@ -60,9 +60,12 @@ func (m *Service) fiberMiddlewareInitialization() {
 		started, e := time.Now(), c.Next()
 		elapsed := time.Since(started).Round(time.Microsecond)
 
-		status, lvl, err := c.Response().StatusCode(), utils.HTTPAccessLogLevel, &fiber.Error{}
+		status, lvl := c.Response().StatusCode(), utils.HTTPAccessLogLevel
+
+		var err *fiber.Error
+		var cause string
 		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {
-			status, lvl = err.Code, zerolog.WarnLevel
+			status, lvl, cause = err.Code, zerolog.WarnLevel, err.Error()
 		}
 
 		rlog(c).WithLevel(lvl).
@@ -71,7 +74,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Str("path", c.Path()).
 			Str("ip", c.Context().RemoteIP().String()).
 			Dur("latency", elapsed).
-			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg("")
+			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg(cause)
 
 		return
 	})
@@ -152,5 +155,4 @@ func (m *Service) fiberRouterInitialization() {
 
 	// step3 - proxy request to upstream
 	apiv1.Use(m.proxy.HandleProxyToDst)
-
 }
