@@ -60,7 +60,9 @@ func (m *Service) fiberMiddlewareInitialization() {
 		started, e := time.Now(), c.Next()
 		elapsed := time.Since(started).Round(time.Microsecond)
 
-		status, lvl, err := c.Response().StatusCode(), utils.HTTPAccessLogLevel, &fiber.Error{}
+		status, lvl := c.Response().StatusCode(), utils.HTTPAccessLogLevel
+
+		var err *fiber.Error
 		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {
 			status, lvl = err.Code, zerolog.WarnLevel
 		}
