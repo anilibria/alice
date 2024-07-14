@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/proxy"
@@ -67,9 +66,9 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 		DisablePreParseMultipartForm: true,
 
 		Prefork:      gCli.Bool("http-prefork"),
-		IdleTimeout:  300 * time.Second,
-		ReadTimeout:  10000 * time.Millisecond,
-		WriteTimeout: 2000 * time.Millisecond,
+		IdleTimeout:  gCli.Duration("http-idle-timeout"),
+		ReadTimeout:  gCli.Duration("http-read-timeout"),
+		WriteTimeout: gCli.Duration("http-write-timeout"),
 
 		DisableDefaultContentType: true,
 
