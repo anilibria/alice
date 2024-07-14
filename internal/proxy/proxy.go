@@ -21,8 +21,8 @@ type Proxy struct {
 }
 
 type ProxyConfig struct {
-	dstServer string
-	dstHost   string
+	dstServer, dstHost string
+	apiSecret          []byte
 }
 
 func NewProxy(c context.Context) *Proxy {
@@ -33,6 +33,7 @@ func NewProxy(c context.Context) *Proxy {
 		config: &ProxyConfig{
 			dstServer: cli.String("proxy-dst-server"),
 			dstHost:   cli.String("proxy-dst-host"),
+			apiSecret: []byte(cli.String("cache-api-secret")),
 		},
 
 		cache: c.Value(utils.CKCache).(*cache.Cache),
@@ -50,11 +51,20 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 		return
 	}
 
-	return m.cacheAndRespond(c, rsp)
+	if !m.IsCacheBypass(c) {
+		return m.cacheAndRespond(c, rsp)
+	}
+
+	return m.respondWithStatus(c, rsp.Body(), rsp.StatusCode())
 }
 
 func (m *Proxy) ProxyCachedRequest(c *fiber.Ctx) (e error) {
 	return m.respondFromCache(c)
+}
+
+func (*Proxy) IsCacheBypass(c *fiber.Ctx) bool {
+	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+	return key.Len() == 0
 }
 
 func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
