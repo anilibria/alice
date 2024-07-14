@@ -104,7 +104,7 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 	return
 }
 
-func (m *Proxy) bypassCache(c *fiber.Ctx) {
+func (*Proxy) bypassCache(c *fiber.Ctx) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 	key.Reset()
 }
