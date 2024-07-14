@@ -63,13 +63,9 @@ func (m *Service) fiberMiddlewareInitialization() {
 		status, lvl := c.Response().StatusCode(), utils.HTTPAccessLogLevel
 
 		var err *fiber.Error
+		var cause string
 		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {
-			status, lvl = err.Code, zerolog.WarnLevel
-		}
-
-		var errmsg string
-		if err != nil {
-			errmsg = err.Error()
+			status, lvl, cause = err.Code, zerolog.WarnLevel, err.Error()
 		}
 
 		rlog(c).WithLevel(lvl).
@@ -78,7 +74,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Str("path", c.Path()).
 			Str("ip", c.Context().RemoteIP().String()).
 			Dur("latency", elapsed).
-			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg(errmsg)
+			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg(cause)
 
 		return
 	})
