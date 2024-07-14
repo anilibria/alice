@@ -154,5 +154,4 @@ func (m *Service) fiberRouterInitialization() {
 
 	// step3 - proxy request to upstream
 	apiv1.Use(m.proxy.HandleProxyToDst)
-
 }

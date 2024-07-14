@@ -91,7 +91,7 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		e = fmt.Errorf("proxy server respond with status %d", status)
 		return
 	} else if status >= fiber.StatusBadRequest {
-		rlog(c).Warn().Msgf("status %d detected for request, bypass cache", status)
+		rlog(c).Info().Msgf("status %d detected for request, bypass cache", status)
 
 		m.bypassCache(c)
 		return
