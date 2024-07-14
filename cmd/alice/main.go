@@ -126,12 +126,14 @@ func main() {
 			DisableDefaultText: true,
 		},
 		&cli.StringFlag{
-			Name:  "http-pprof-prefix",
-			Usage: "it should start with (but not end with) a slash. Example: '/test'",
+			Name:    "http-pprof-prefix",
+			Usage:   "it should start with (but not end with) a slash. Example: '/test'",
+			EnvVars: []string{"PPROF_PREFIX"},
 		},
 		&cli.StringFlag{
-			Name:  "http-pprof-secret",
-			Usage: "define static secret in x-pprof-secret header for avoiding unauthorized access",
+			Name:    "http-pprof-secret",
+			Usage:   "define static secret in x-pprof-secret header for avoiding unauthorized access",
+			EnvVars: []string{"PPROF_SECRET"},
 		},
 
 		// limiter settings
