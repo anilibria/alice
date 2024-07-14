@@ -40,8 +40,6 @@ type Service struct {
 
 	pprofPrefix string
 	pprofSecret []byte
-
-	apiSecret []byte
 }
 
 func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
