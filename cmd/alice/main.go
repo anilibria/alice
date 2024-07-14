@@ -222,6 +222,11 @@ func main() {
 			0 value means no size limit`,
 			Value: 1024,
 		},
+		&cli.IntFlag{
+			Name:  "cache-max-entry-size",
+			Usage: "Max size of entry in bytes. Used only to calculate initial size for cache shards",
+			Value: 128 * 1024,
+		},
 
 		&cli.StringFlag{
 			Name:  "cache-api-secret",

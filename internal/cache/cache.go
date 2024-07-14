@@ -33,7 +33,7 @@ func NewCache(c context.Context) (cache *Cache, e error) {
 		CleanWindow: cli.Duration("cache-clean-window"),
 
 		MaxEntriesInWindow: 1000 * 10 * 60,
-		MaxEntrySize:       128 * 1024,
+		MaxEntrySize:       cli.Int("cache-max-entry-size"),
 
 		// not worked?
 		Verbose: zerolog.GlobalLevel() == zerolog.TraceLevel,
