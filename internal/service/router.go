@@ -131,6 +131,17 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 func (m *Service) fiberRouterInitialization() {
 	//
+	// ALICE internal cache api
+	cacheapi := m.fb.Group("/internal/cache", m.proxy.MiddlewareInternalApi)
+
+	cacheapi.Get("/stats", m.proxy.HandleCacheStats)
+	cacheapi.Post("/stats/reset", m.proxy.HandleCacheStats)
+	cacheapi.Get("/dump", m.proxy.HandleCacheDump)
+	cacheapi.Get("/dumpkeys", m.proxy.HandleCacheDumpKeys)
+	cacheapi.Post("/purge", m.proxy.HandleCachePurge)
+	cacheapi.Post("/purgeall", m.proxy.HandleCachePurgeAll)
+
+	//
 	// ALICE apiv1 requests proxying lifecycle:
 
 	// step1 - validate request
@@ -141,4 +152,5 @@ func (m *Service) fiberRouterInitialization() {
 
 	// step3 - proxy request to upstream
 	apiv1.Use(m.proxy.HandleProxyToDst)
+
 }

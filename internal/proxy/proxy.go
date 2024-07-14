@@ -21,8 +21,8 @@ type Proxy struct {
 }
 
 type ProxyConfig struct {
-	dstServer string
-	dstHost   string
+	dstServer, dstHost string
+	apiSecret          []byte
 }
 
 func NewProxy(c context.Context) *Proxy {
@@ -33,6 +33,7 @@ func NewProxy(c context.Context) *Proxy {
 		config: &ProxyConfig{
 			dstServer: cli.String("proxy-dst-server"),
 			dstHost:   cli.String("proxy-dst-host"),
+			apiSecret: []byte(cli.String("cache-api-secret")),
 		},
 
 		cache: c.Value(utils.CKCache).(*cache.Cache),

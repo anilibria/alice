@@ -222,6 +222,12 @@ func main() {
 			0 value means no size limit`,
 			Value: 1024,
 		},
+
+		&cli.StringFlag{
+			Name:  "cache-api-secret",
+			Usage: "define static secret in x-api-secret header for avoiding unauthorized access",
+			Value: "secret",
+		},
 	}
 
 	app.Action = func(c *cli.Context) (e error) {
