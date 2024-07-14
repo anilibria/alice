@@ -49,7 +49,7 @@ func (m *Cache) ApiDumpKeys() io.Reader {
 	tb.Style().Options.SeparateRows = true
 
 	tb.SortBy([]table.SortBy{
-		{Number: 0, Mode: table.AscNumericAlpha},
+		{Number: 0, Mode: table.Asc},
 	})
 
 	return buf
