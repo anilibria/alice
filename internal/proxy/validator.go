@@ -160,7 +160,7 @@ func (m *Validator) isArgsWhitelisted() (_ bool) {
 	if len(declinedKeys) != 0 {
 		if zerolog.GlobalLevel() < zerolog.InfoLevel {
 			for key := range declinedKeys {
-				fmt.Println("Invalid key detected - " + futils.UnsafeString(key))
+				rlog(m.Ctx).Debug().Msg("Invalid key detected - " + futils.UnsafeString(key))
 			}
 		}
 

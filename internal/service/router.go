@@ -29,8 +29,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 	// - we send logs in syslog and stdout by default,
 	// - but if access-log-stdout is 0 we use syslog output only
 	m.fb.Use(func(c *fiber.Ctx) error {
-		logger, spanid := gLog.With().Logger().Level(utils.HTTPAccessLogLevel),
-			c.Context().ID()
+		logger, spanid := gLog.With().Logger(), c.Context().ID()
 
 		logger.UpdateContext(func(zc zerolog.Context) zerolog.Context {
 			return zc.Uint64("id", spanid)

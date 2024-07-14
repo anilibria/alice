@@ -74,6 +74,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 
 		RequestMethods: []string{
 			fiber.MethodHead,
+			fiber.MethodGet,
 			fiber.MethodPost,
 		},
 
@@ -213,8 +214,4 @@ LOOP:
 	if e := m.fb.ShutdownWithContext(gCtx); e != nil {
 		gLog.Error().Err(e).Msg("fiber Shutdown() error")
 	}
-}
-
-func rlog(c *fiber.Ctx) *zerolog.Logger {
-	return c.Locals("logger").(*zerolog.Logger)
 }

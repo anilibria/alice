@@ -79,9 +79,10 @@ func main() {
 			EnvVars: []string{"SYSLOG_ADDRESS"},
 		},
 		&cli.StringFlag{
-			Name:  "syslog-proto",
-			Usage: "syslog protocol (optional); tcp or udp is possible",
-			Value: "tcp",
+			Name:    "syslog-proto",
+			Usage:   "syslog protocol (optional); tcp or udp is possible",
+			Value:   "tcp",
+			EnvVars: []string{"SYSLOG_PROTO"},
 		},
 		&cli.StringFlag{
 			Name:  "syslog-tag",
@@ -107,6 +108,18 @@ func main() {
 			EXPERIMENTAL! USE CAREFULLY!`,
 			DisableDefaultText: true,
 		},
+		&cli.DurationFlag{
+			Name:  "http-read-timeout",
+			Value: 5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-write-timeout",
+			Value: 5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:  "http-idle-timeout",
+			Value: 5 * time.Minute,
+		},
 		&cli.BoolFlag{
 			Name:               "http-pprof-enable",
 			Usage:              "enable golang http-pprof methods",
@@ -119,18 +132,6 @@ func main() {
 		&cli.StringFlag{
 			Name:  "http-pprof-secret",
 			Usage: "define static secret in x-pprof-secret header for avoiding unauthorized access",
-		},
-		&cli.DurationFlag{
-			Name:  "http-read-timeout",
-			Value: 5 * time.Second,
-		},
-		&cli.DurationFlag{
-			Name:  "http-write-timeout",
-			Value: 5 * time.Second,
-		},
-		&cli.DurationFlag{
-			Name:  "http-idle-timeout",
-			Value: 5 * time.Minute,
 		},
 
 		// limiter settings
