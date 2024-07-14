@@ -188,6 +188,7 @@ func (m *Validator) encodeFormData() (e error) {
 
 	for k, v := range form.Value {
 		m.requestArgs.Add(k, v[0])
+		rlog(m.Ctx).Trace().Msg("parsed form value " + k + " - " + v[0])
 	}
 
 	// TODO - with go1.21.0 we can use:
@@ -217,7 +218,7 @@ func (m *Validator) isArgsWhitelisted() (_ bool) {
 	if len(declinedKeys) != 0 {
 		if zerolog.GlobalLevel() < zerolog.InfoLevel {
 			for key := range declinedKeys {
-				rlog(m.Ctx).Debug().Msg("Invalid key detected - " + futils.UnsafeString(key))
+				rlog(m.Ctx).Debug().Msg("Invalid args-key detected - " + futils.UnsafeString(key))
 			}
 		}
 
@@ -233,6 +234,9 @@ func (m *Validator) isQueryWhitelisted() (ok bool) {
 		return true
 	}
 
-	_, ok = queryWhitelist[futils.UnsafeString(query)]
+	if _, ok = queryWhitelist[futils.UnsafeString(query)]; !ok {
+		rlog(m.Ctx).Debug().Msg("Invalid query-key detected - " + futils.UnsafeString(query))
+	}
+
 	return
 }
