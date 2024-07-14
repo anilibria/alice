@@ -135,7 +135,7 @@ func (m *Service) fiberRouterInitialization() {
 	cacheapi := m.fb.Group("/internal/cache", m.proxy.MiddlewareInternalApi)
 
 	cacheapi.Get("/stats", m.proxy.HandleCacheStats)
-	cacheapi.Post("/stats/reset", m.proxy.HandleCacheStats)
+	cacheapi.Post("/stats/reset", m.proxy.HandleCacheStatsReset)
 	cacheapi.Get("/dump", m.proxy.HandleCacheDump)
 	cacheapi.Get("/dumpkeys", m.proxy.HandleCacheDumpKeys)
 	cacheapi.Post("/purge", m.proxy.HandleCachePurge)
