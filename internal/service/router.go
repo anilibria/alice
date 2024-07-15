@@ -11,7 +11,6 @@ import (
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/skip"
@@ -125,11 +124,6 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Prefix: gCli.String("http-pprof-prefix"),
 		}))
 	}
-
-	// compress support
-	m.fb.Use(compress.New(compress.Config{
-		Level: compress.LevelBestSpeed,
-	}))
 }
 
 func (m *Service) fiberRouterInitialization() {
