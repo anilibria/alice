@@ -118,7 +118,7 @@ func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 			m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}
 
-	if e = m.cache.CacheResponse(key.UnsafeString(), rsp.Body()); e != nil {
+	if e = m.cache.Cache(key.UnsafeString(), rsp.Body()); e != nil {
 		return
 	}
 
@@ -138,7 +138,7 @@ func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 
 	var ok bool
-	if ok, e = m.cache.IsResponseCached(key.UnsafeString()); e != nil {
+	if ok, e = m.cache.IsCached(key.UnsafeString()); e != nil {
 		rlog(c).Warn().Msg("there is problems with cache driver")
 		return
 	} else if !ok {
@@ -151,12 +151,11 @@ func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 
-	var body []byte
-	if body, e = m.cache.CachedResponse(key.UnsafeString()); e != nil {
+	if e = m.cache.Write(key.UnsafeString(), c); e != nil {
 		return
 	}
 
-	return m.respondWithStatus(c, body, fiber.StatusOK)
+	return m.respondWithStatus(c, nil, fiber.StatusOK)
 }
 
 func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
@@ -166,7 +165,10 @@ func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
 			m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}
 
-	c.Response().SetBodyRaw(body)
+	if body != nil {
+		c.Response().SetBodyRaw(body)
+	}
+
 	c.Response().Header.SetContentType(fiber.MIMEApplicationJSONCharsetUTF8)
 	return c.SendStatus(status)
 }
