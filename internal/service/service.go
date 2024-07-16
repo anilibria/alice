@@ -89,7 +89,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 			// AniLibria apiv1 error style:
 			c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
 
-			// apiv1 legacy hardcode
+			// `rspcode` - apiv1 legacy hardcode
 			// if u have 4XX or 5XX in service, u must respond with 200
 			rspcode, respdesc, respond :=
 				fiber.StatusOK,
