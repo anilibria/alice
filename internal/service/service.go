@@ -86,15 +86,30 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 				return c.Context().Conn().Close()
 			}
 
-			c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
+			// AniLibria apiv1 error style:
+			c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
 
-			var e *fiber.Error
-			if !errors.As(err, &e) {
-				return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+			// apiv1 legacy hardcode
+			// if u have 4XX or 5XX in service, u must respond with 200
+			rspcode, respdesc, respond :=
+				fiber.StatusOK,
+				"error provided by alice ("+gCli.App.Version+") service",
+				func(status int, msg, desc string) {
+					if e := respondWithError(status, msg, desc, c); e != nil {
+						rlog(c).Error().Msg("could not respond with JSON error - " + e.Error())
+					}
+				}
+
+			// parse fiber error
+			var ferr *fiber.Error
+			if !errors.As(err, &ferr) {
+				respond(fiber.StatusInternalServerError, err.Error(), "")
+				return c.SendStatus(rspcode)
 			}
 
+			respond(ferr.Code, ferr.Error(), respdesc)
 			rlog(c).Error().Msgf("%+v", err)
-			return c.SendStatus(e.Code)
+			return c.SendStatus(rspcode)
 		},
 	})
 
