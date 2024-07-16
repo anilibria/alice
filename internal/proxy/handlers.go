@@ -63,12 +63,10 @@ func (m *Proxy) HandleCacheDump(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
 	}
 
-	var payload []byte
-	if payload, e = m.cache.ApiDump(cachekey); e != nil {
+	if e = m.cache.ApiDump(cachekey, c); e != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
 	}
 
-	c.Response().SetBodyRaw(payload)
 	return respondPlainWithStatus(c, fiber.StatusOK)
 }
 

@@ -188,7 +188,10 @@ func (m *Validator) encodeFormData() (e error) {
 
 	for k, v := range form.Value {
 		m.requestArgs.Add(k, v[0])
-		rlog(m.Ctx).Trace().Msg("parsed form value " + k + " - " + v[0])
+
+		if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+			rlog(m.Ctx).Trace().Msg("parsed form value " + k + " - " + v[0])
+		}
 	}
 
 	// TODO - with go1.21.0 we can use:
@@ -206,6 +209,7 @@ func (m *Validator) encodeFormData() (e error) {
 
 func (m *Validator) isArgsWhitelisted() (_ bool) {
 	// TODO too much allocations here:
+	// ? maybe make 'pool' fro chans map[size][]chan []byte?
 	declinedKeys := make(chan []byte, m.requestArgs.Len())
 
 	m.requestArgs.VisitAll(func(key, value []byte) {

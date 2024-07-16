@@ -15,8 +15,8 @@ type ApiCacheEntry struct {
 	Key       string
 }
 
-func (m *Cache) ApiDump(key string) ([]byte, error) {
-	return m.Get(key)
+func (m *Cache) ApiDump(key string, w io.Writer) error {
+	return m.Write(key, w)
 }
 
 func (m *Cache) ApiDumpKeys() io.Reader {

@@ -201,7 +201,7 @@ func main() {
 		&cli.IntFlag{
 			Name:  "cache-shards",
 			Usage: "number of shards (must be a power of 2)",
-			Value: 1024,
+			Value: 512,
 		},
 		&cli.DurationFlag{
 			Name:  "cache-life-window",
@@ -225,7 +225,7 @@ func main() {
 		&cli.IntFlag{
 			Name:  "cache-max-entry-size",
 			Usage: "Max size of entry in bytes. Used only to calculate initial size for cache shards",
-			Value: 128 * 1024,
+			Value: 64 * 1024,
 		},
 
 		&cli.StringFlag{
