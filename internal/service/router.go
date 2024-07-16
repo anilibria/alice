@@ -61,6 +61,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 		status, lvl := c.Response().StatusCode(), utils.HTTPAccessLogLevel
 
+		// TODO too much allocations here: 
 		var err *fiber.Error
 		var cause string
 		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {

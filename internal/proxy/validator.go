@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"sync"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -27,19 +28,28 @@ type Validator struct {
 	customs CustomHeaders
 }
 
-func (*Proxy) NewValidator(c *fiber.Ctx) *Validator {
-	return &Validator{
-		contentTypeRaw: c.Request().Header.ContentType(),
-
-		cacheKey: AcquireKey(),
-
-		// TODO -- logger
-		// TODO -- see line 134
-		// log: c.Value(utils.CKLogger).(*zerolog.Logger),
-
-		Ctx: c,
-	}
+var validatorPool = sync.Pool{
+	New: func() interface{} {
+		return new(Validator)
+	},
 }
+
+func AcquireValidator(c *fiber.Ctx, ctr []byte) (v *Validator) {
+	v = validatorPool.Get().(*Validator)
+
+	v.Ctx, v.contentTypeRaw = c, ctr
+	v.cacheKey = AcquireKey()
+	return
+}
+
+func ReleaseValidator(v *Validator) {
+	v.Reset()
+	validatorPool.Put(v)
+}
+
+//
+//
+//
 
 func (m *Validator) ValidateRequest() (e error) {
 	if m.contentType = m.validateContentType(); m.contentType == utils.CTInvalid {
@@ -72,9 +82,15 @@ func (m *Validator) ValidateRequest() (e error) {
 	return
 }
 
-func (m *Validator) Destroy() {
-	ReleaseKey(m.cacheKey)
+func (m *Validator) Reset() {
 	m.Context().RemoveUserValue(utils.UVCacheKey)
+	ReleaseKey(m.cacheKey)
+
+	m.contentType = 0
+	m.contentTypeRaw = m.contentTypeRaw[:]
+
+	m.customs = 0
+	m.requestArgs, m.Ctx = nil, nil
 }
 
 //

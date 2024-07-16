@@ -7,8 +7,8 @@ import (
 )
 
 func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
-	v := m.NewValidator(c)
-	defer v.Destroy()
+	v := AcquireValidator(c, c.Request().Header.ContentType())
+	defer ReleaseValidator(v)
 
 	if e = v.ValidateRequest(); e != nil {
 		return fiber.NewError(fiber.StatusBadRequest, e.Error())
