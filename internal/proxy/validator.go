@@ -87,7 +87,7 @@ func (m *Validator) Reset() {
 	ReleaseKey(m.cacheKey)
 
 	m.contentType = 0
-	m.contentTypeRaw = m.contentTypeRaw[:]
+	m.contentTypeRaw = m.contentTypeRaw[:0]
 
 	m.customs = 0
 	m.requestArgs, m.Ctx = nil, nil
@@ -223,29 +223,41 @@ func (m *Validator) encodeFormData() (e error) {
 	return
 }
 
+var declinedKeysPool = sync.Pool{
+	New: func() interface{} {
+		dk := make([]string, 0, 0)
+		return &dk
+	},
+}
+
 func (m *Validator) isArgsWhitelisted() (_ bool) {
-	// TODO too much allocations here:
-	// ? maybe make 'pool' fro chans map[size][]chan []byte?
-	declinedKeys := make(chan []byte, m.requestArgs.Len())
+	// []string pool without allocations
+	// researched from https://vk.cc/cys872
+	declinedKeysPtr := declinedKeysPool.Get().(*[]string)
+	declinedKeys := *declinedKeysPtr
 
 	m.requestArgs.VisitAll(func(key, value []byte) {
 		if _, ok := postArgsWhitelist[futils.UnsafeString(key)]; !ok {
-			declinedKeys <- key
+			declinedKeys = append(declinedKeys, futils.UnsafeString(key))
 		}
 	})
-	close(declinedKeys)
 
+	var ok bool = true
 	if len(declinedKeys) != 0 {
 		if zerolog.GlobalLevel() < zerolog.InfoLevel {
-			for key := range declinedKeys {
-				rlog(m.Ctx).Debug().Msg("Invalid args-key detected - " + futils.UnsafeString(key))
+			for _, key := range declinedKeys {
+				rlog(m.Ctx).Debug().Msg("Invalid args-key detected - " + key)
 			}
 		}
 
-		return
+		ok = false
 	}
 
-	return true
+	declinedKeys = declinedKeys[:0]
+	*declinedKeysPtr = declinedKeys // copy the stack header over to the heap
+	declinedKeysPool.Put(declinedKeysPtr)
+
+	return ok
 }
 
 func (m *Validator) isQueryWhitelisted() (ok bool) {
