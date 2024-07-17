@@ -8,6 +8,7 @@ import (
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
+	futils "github.com/gofiber/fiber/v2/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 	"github.com/valyala/fasthttp"
@@ -50,6 +51,13 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 	if e = m.doRequest(c, req, rsp); e != nil {
 		rlog(c).Warn().Msg(req.String())
 		return
+	}
+
+	var ok bool
+	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
+		rlog(c).Warn().Msg(e.Error())
+	} else if !ok {
+		m.bypassCache(c)
 	}
 
 	if !m.IsCacheBypass(c) {
@@ -101,6 +109,32 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		e = errors.New("proxy server respond with nil body")
 	}
 
+	return
+}
+
+func (m *Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok bool, e error) {
+	var apirsp *ApiResponse
+	if apirsp, e = UnmarshalApiResponse(rsp.Body()); e != nil || apirsp == nil {
+		return
+	}
+
+	if apirsp.Status && apirsp.Error == nil {
+		ok = true
+		return
+	}
+
+	if apirsp.Error == nil {
+		if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+			rlog(c).Debug().Msg(futils.UnsafeString(rsp.Body()))
+			rlog(c).Debug().Msgf("%+v", apirsp)
+			rlog(c).Debug().Msgf("%+v", apirsp.Error)
+		}
+
+		rlog(c).Error().Msg("smth is wrong in dst response - status false and err == nil")
+		return
+	}
+
+	rlog(c).Warn().Msgf("api server respond with %d - %s", apirsp.Error.Code, apirsp.Error.Message)
 	return
 }
 
