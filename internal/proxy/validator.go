@@ -225,7 +225,7 @@ func (m *Validator) encodeFormData() (e error) {
 
 var declinedKeysPool = sync.Pool{
 	New: func() interface{} {
-		dk := make([]string, 0, 0)
+		dk := make([]string, 0)
 		return &dk
 	},
 }
