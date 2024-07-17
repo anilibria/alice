@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	gCli *cli.Context
-	gLog *zerolog.Logger
+	gCli  *cli.Context
+	gLog  *zerolog.Logger
+	gALog *zerolog.Logger
 
 	gCtx   context.Context
 	gAbort context.CancelFunc
@@ -43,7 +44,12 @@ type Service struct {
 }
 
 func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
-	gCli, gLog = c, l
+	gCli, gLog, gALog = c, l, nil
+
+	if zerolog.GlobalLevel() > zerolog.DebugLevel && zerolog.GlobalLevel() < zerolog.NoLevel {
+		alogger := gLog.With().Logger().Output(s)
+		gALog = &alogger
+	}
 
 	service := new(Service)
 	service.syslogWriter = s
