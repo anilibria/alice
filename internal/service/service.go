@@ -49,6 +49,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 	service.syslogWriter = s
 
 	appname := fmt.Sprintf("%s/%s", c.App.Name, c.App.Version)
+	errdesc := "error provided by " + appname + " service"
 
 	service.fb = fiber.New(fiber.Config{
 		EnableTrustedProxyCheck: len(gCli.String("http-trusted-proxies")) > 0,
@@ -93,15 +94,19 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 			// if u have 4XX or 5XX in service, u must respond with 200
 			rspcode, respdesc, respond :=
 				fiber.StatusOK,
-				"error provided by alice ("+gCli.App.Version+") service",
+				errdesc,
 				func(status int, msg, desc string) {
 					if e := respondWithError(status, msg, desc, c); e != nil {
 						rlog(c).Error().Msg("could not respond with JSON error - " + e.Error())
 					}
 				}
 
+			// ? not profitable
+			// TODO too much allocations here:
+			ferr := AcquireFErr()
+			defer ReleaseFErr(ferr)
+
 			// parse fiber error
-			var ferr *fiber.Error
 			if !errors.As(err, &ferr) {
 				respond(fiber.StatusInternalServerError, err.Error(), "")
 				return c.SendStatus(rspcode)

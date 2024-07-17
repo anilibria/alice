@@ -61,6 +61,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 		status, lvl := c.Response().StatusCode(), utils.HTTPAccessLogLevel
 
+		// ? not profitable
 		// TODO too much allocations here:
 		err := AcquireFErr()
 		defer ReleaseFErr(err)

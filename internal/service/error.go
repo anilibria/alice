@@ -63,6 +63,6 @@ func AcquireFErr() *fiber.Error {
 
 func ReleaseFErr(e *fiber.Error) {
 	// ? is it required
-	// e.Code, e.Message = 0, ""
+	e.Code, e.Message = 0, ""
 	ferrPool.Put(e)
 }
