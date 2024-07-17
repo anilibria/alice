@@ -102,7 +102,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 				fiber.StatusOK,
 				errdesc,
 				func(status int, msg, desc string) {
-					if e := respondWithError(status, msg, desc, c); e != nil {
+					if e := utils.RespondWithApiError(status, msg, desc, c); e != nil {
 						rlog(c).Error().Msg("could not respond with JSON error - " + e.Error())
 					}
 				}
@@ -240,4 +240,24 @@ LOOP:
 	if e := m.fb.ShutdownWithContext(gCtx); e != nil {
 		gLog.Error().Err(e).Msg("fiber Shutdown() error")
 	}
+}
+
+// TODO 2delete
+// I think this block of code is not profitable
+// so may be it must be reverted
+
+var ferrPool = sync.Pool{
+	New: func() interface{} {
+		return new(fiber.Error)
+	},
+}
+
+func AcquireFErr() *fiber.Error {
+	return ferrPool.Get().(*fiber.Error)
+}
+
+func ReleaseFErr(e *fiber.Error) {
+	// ? is it required
+	e.Code, e.Message = 0, ""
+	ferrPool.Put(e)
 }
