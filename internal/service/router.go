@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/anilibria/alice/internal/utils"
@@ -16,6 +17,18 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/skip"
 	"github.com/rs/zerolog"
 )
+
+var loggerPool = sync.Pool{
+	New: func() interface{} {
+		if gALog != nil {
+			l := gALog.With().Logger()
+			return &l
+		} else {
+			l := gLog.With().Logger()
+			return &l
+		}
+	},
+}
 
 func (m *Service) fiberMiddlewareInitialization() {
 	// request id 3.0
@@ -27,19 +40,18 @@ func (m *Service) fiberMiddlewareInitialization() {
 	// prefixed logger initialization
 	// - we send logs in syslog and stdout by default,
 	// - but if access-log-stdout is 0 we use syslog output only
-	m.fb.Use(func(c *fiber.Ctx) error {
-		logger, spanid := gLog.With().Logger(), c.Context().ID()
+	m.fb.Use(func(c *fiber.Ctx) (e error) {
+		logger := loggerPool.Get().(*zerolog.Logger)
 
 		logger.UpdateContext(func(zc zerolog.Context) zerolog.Context {
-			return zc.Uint64("id", spanid)
+			return zc.Uint64("id", c.Context().ID())
 		})
 
-		if zerolog.GlobalLevel() > zerolog.DebugLevel && zerolog.GlobalLevel() < zerolog.NoLevel {
-			logger = logger.Output(m.syslogWriter)
-		}
+		c.Locals("logger", logger)
+		e = c.Next()
 
-		c.Locals("logger", &logger)
-		return c.Next()
+		loggerPool.Put(logger)
+		return
 	})
 
 	// panic recover for all handlers
@@ -61,7 +73,11 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 		status, lvl := c.Response().StatusCode(), utils.HTTPAccessLogLevel
 
-		var err *fiber.Error
+		// ? not profitable
+		// TODO too much allocations here:
+		err := AcquireFErr()
+		defer ReleaseFErr(err)
+
 		var cause string
 		if errors.As(e, &err) || status >= fiber.StatusInternalServerError {
 			status, lvl, cause = err.Code, zerolog.WarnLevel, err.Error()
