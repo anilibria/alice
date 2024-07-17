@@ -250,7 +250,7 @@ func (m *Validator) isArgsWhitelisted() (_ bool) {
 			}
 		}
 
-		// ok = false
+		ok = false
 	}
 
 	declinedKeys = declinedKeys[:0]
