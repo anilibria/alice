@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
+func (*Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 	v := AcquireValidator(c, c.Request().Header.ContentType())
 	defer ReleaseValidator(v)
 
