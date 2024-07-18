@@ -53,14 +53,6 @@ func (m *Proxy) ProxyFiberRequest(c *fiber.Ctx) (e error) {
 		return
 	}
 
-	var ok bool
-	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
-		rlog(c).Warn().Msg(e.Error())
-		m.bypassCache(c)
-	} else if !ok {
-		m.bypassCache(c)
-	}
-
 	if !m.IsCacheBypass(c) {
 		return m.cacheAndRespond(c, rsp)
 	}
@@ -108,6 +100,15 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 
 	if len(body) == 0 {
 		e = errors.New("proxy server respond with nil body")
+		return
+	}
+
+	var ok bool
+	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
+		rlog(c).Warn().Msg(e.Error())
+		m.bypassCache(c)
+	} else if !ok {
+		m.bypassCache(c)
 	}
 
 	return
