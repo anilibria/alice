@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/gofiber/fiber/v2 v2.52.5
+	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/klauspost/compress v1.17.9
 	github.com/mailru/easyjson v0.7.7
@@ -17,6 +18,7 @@ require (
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
+	github.com/gofiber/utils/v2 v2.0.0-beta.3 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -26,5 +28,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
+	go.etcd.io/bbolt v1.3.9 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 )

@@ -10,11 +10,13 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/proxy"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/storage/bbolt/v2"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 )
@@ -31,8 +33,8 @@ var (
 type Service struct {
 	loopError error
 
-	fb *fiber.App
-	// fbstor fiber.Storage
+	fb     *fiber.App
+	fbstor fiber.Storage
 
 	proxy *proxy.Proxy
 	cache *cache.Cache
@@ -118,25 +120,37 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 				return c.SendStatus(rspcode)
 			}
 
+			if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+				rlog(c).Debug().Msgf("%+v", err)
+			}
+
 			respond(ferr.Code, ferr.Error(), respdesc)
-			rlog(c).Error().Msgf("%+v", err)
 			return c.SendStatus(rspcode)
 		},
 	})
 
 	// storage setup for fiber's limiter
-	// if gCli.Bool("limiter-use-bbolt") {
-	// 	var prefix string
-	// 	if prefix = gCli.String("database-prefix"); prefix == "" {
-	// 		prefix = "."
-	// 	}
+	if gCli.Bool("limiter-use-bbolt") {
+		var prefix string
+		if prefix = gCli.String("database-prefix"); prefix == "" {
+			prefix = "."
+		}
 
-	// 	service.fbstor = bolt.New(bolt.Config{
-	// 		Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
-	// 		Bucket:   "application-limiter",
-	// 		Reset:    false,
-	// 	})
-	// }
+		service.fbstor = bbolt.New(bbolt.Config{
+			Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
+			Bucket:   "apiv1-limiter",
+
+			// !!!
+			// !!!
+			// !!!
+			Reset: true,
+			// !!!
+			// !!!
+			// !!!
+
+			Timeout: 1 * time.Minute,
+		})
+	}
 
 	return service
 }
