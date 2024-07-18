@@ -119,6 +119,7 @@ func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok boo
 	if apirsp, e = utils.UnmarshalApiResponse(rsp.Body()); e != nil || apirsp == nil {
 		return
 	}
+	defer utils.ReleaseApiResponse(apirsp)
 
 	if apirsp.Status && apirsp.Error == nil {
 		ok = true
