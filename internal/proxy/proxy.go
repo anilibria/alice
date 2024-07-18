@@ -121,20 +121,25 @@ func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok boo
 	}
 	defer utils.ReleaseApiResponse(apirsp)
 
-	if apirsp.Status && apirsp.Error == nil {
+	if apirsp.Status && (apirsp.Error == nil || apirsp.Error.Code == 0) {
 		ok = true
 		return
 	}
 
 	if apirsp.Error == nil {
 		if zerolog.GlobalLevel() <= zerolog.DebugLevel {
-			rlog(c).Debug().Msg(futils.UnsafeString(rsp.Body()))
-			rlog(c).Debug().Msgf("%+v", apirsp)
-			rlog(c).Debug().Msgf("%+v", apirsp.Error)
+			rlog(c).Trace().Msg(futils.UnsafeString(rsp.Body()))
+			rlog(c).Trace().Msgf("%+v", apirsp)
+			rlog(c).Trace().Msgf("%+v", apirsp.Error)
 		}
 
 		rlog(c).Error().Msg("smth is wrong in dst response - status false and err == nil")
 		return
+	}
+
+	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+		rlog(c).Trace().Msgf("%+v", apirsp)
+		rlog(c).Trace().Msgf("%+v", apirsp.Error)
 	}
 
 	rlog(c).Info().Msgf("api server respond with %d - %s", apirsp.Error.Code, apirsp.Error.Message)
