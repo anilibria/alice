@@ -121,7 +121,10 @@ func (m *Validator) validateCustomHeaders() {
 		val := m.Request().Header.PeekBytes(futils.UnsafeBytes(header))
 		if len(val) != 0 {
 			m.customs = m.customs | ch
-			rlog(m.Ctx).Trace().Msg("found custom header " + header)
+
+			if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+				rlog(m.Ctx).Trace().Msg("found custom header " + header)
+			}
 		}
 	}
 

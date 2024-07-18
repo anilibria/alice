@@ -2,6 +2,7 @@ package utils
 
 import (
 	"io"
+	"sync"
 
 	"github.com/mailru/easyjson"
 )
@@ -19,18 +20,29 @@ type (
 	}
 )
 
-func newApiResponse(status int, msg, desc string) *ApiResponse {
-	return &ApiResponse{
-		Error: &ApiError{
-			Code:        status,
-			Message:     msg,
-			Description: desc,
-		},
-	}
+var apiResponsePool = sync.Pool{
+	New: func() interface{} {
+		return &ApiResponse{
+			Error: &ApiError{},
+		}
+	},
+}
+
+func AcquireApiResponse() *ApiResponse {
+	return apiResponsePool.Get().(*ApiResponse)
+}
+
+func ReleaseApiResponse(ar *ApiResponse) {
+	ar.Status = false
+	ar.Error.Code, ar.Error.Message, ar.Error.Description = 0, "", ""
+	apiResponsePool.Put(ar)
 }
 
 func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
-	apirsp := newApiResponse(status, msg, desc)
+	apirsp := AcquireApiResponse()
+	apirsp.Error.Code, apirsp.Error.Message, apirsp.Error.Description =
+		status, msg, desc
+	defer ReleaseApiResponse(apirsp)
 
 	var buf []byte
 	if buf, e = easyjson.Marshal(apirsp); e != nil {
@@ -42,6 +54,6 @@ func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
 }
 
 func UnmarshalApiResponse(payload []byte) (_ *ApiResponse, e error) {
-	apirsp := new(ApiResponse)
+	apirsp := AcquireApiResponse()
 	return apirsp, easyjson.Unmarshal(payload, apirsp)
 }
