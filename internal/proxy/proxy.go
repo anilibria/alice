@@ -136,7 +136,7 @@ func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok boo
 		return
 	}
 
-	rlog(c).Warn().Msgf("api server respond with %d - %s", apirsp.Error.Code, apirsp.Error.Message)
+	rlog(c).Info().Msgf("api server respond with %d - %s", apirsp.Error.Code, apirsp.Error.Message)
 	return
 }
 
