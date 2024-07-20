@@ -17,7 +17,7 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils(in *jlexer.Lexer, out *ApiResponse) {
+func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils(in *jlexer.Lexer, out *ApiResponseWOData) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -58,7 +58,7 @@ func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils(out *jwriter.Writer, in ApiResponse) {
+func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils(out *jwriter.Writer, in ApiResponseWOData) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -80,29 +80,133 @@ func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils(out *jwriter.Writ
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v ApiResponse) MarshalJSON() ([]byte, error) {
+func (v ApiResponseWOData) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
 	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v ApiResponse) MarshalEasyJSON(w *jwriter.Writer) {
+func (v ApiResponseWOData) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *ApiResponse) UnmarshalJSON(data []byte) error {
+func (v *ApiResponseWOData) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
 	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *ApiResponse) UnmarshalEasyJSON(l *jlexer.Lexer) {
+func (v *ApiResponseWOData) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils(l, v)
 }
-func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(in *jlexer.Lexer, out *ApiError) {
+func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(in *jlexer.Lexer, out *ApiResponse) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "status":
+			out.Status = bool(in.Bool())
+		case "data":
+			if m, ok := out.Data.(easyjson.Unmarshaler); ok {
+				m.UnmarshalEasyJSON(in)
+			} else if m, ok := out.Data.(json.Unmarshaler); ok {
+				_ = m.UnmarshalJSON(in.Raw())
+			} else {
+				out.Data = in.Interface()
+			}
+		case "error":
+			if in.IsNull() {
+				in.Skip()
+				out.Error = nil
+			} else {
+				if out.Error == nil {
+					out.Error = new(ApiError)
+				}
+				(*out.Error).UnmarshalEasyJSON(in)
+			}
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(out *jwriter.Writer, in ApiResponse) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"status\":"
+		out.RawString(prefix[1:])
+		out.Bool(bool(in.Status))
+	}
+	{
+		const prefix string = ",\"data\":"
+		out.RawString(prefix)
+		if m, ok := in.Data.(easyjson.Marshaler); ok {
+			m.MarshalEasyJSON(out)
+		} else if m, ok := in.Data.(json.Marshaler); ok {
+			out.Raw(m.MarshalJSON())
+		} else {
+			out.Raw(json.Marshal(in.Data))
+		}
+	}
+	{
+		const prefix string = ",\"error\":"
+		out.RawString(prefix)
+		if in.Error == nil {
+			out.RawString("null")
+		} else {
+			(*in.Error).MarshalEasyJSON(out)
+		}
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v ApiResponse) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v ApiResponse) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *ApiResponse) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *ApiResponse) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(l, v)
+}
+func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils2(in *jlexer.Lexer, out *ApiError) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -137,7 +241,7 @@ func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(in *jlexer.Lexer
 		in.Consumed()
 	}
 }
-func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(out *jwriter.Writer, in ApiError) {
+func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils2(out *jwriter.Writer, in ApiError) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -162,23 +266,23 @@ func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(out *jwriter.Wri
 // MarshalJSON supports json.Marshaler interface
 func (v ApiError) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(&w, v)
+	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ApiError) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(w, v)
+	easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ApiError) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(&r, v)
+	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ApiError) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(l, v)
+	easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils2(l, v)
 }

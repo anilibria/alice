@@ -10,6 +10,11 @@ import (
 type (
 	ApiResponse struct {
 		Status bool
+		Data   interface{}
+		Error  *ApiError
+	}
+	ApiResponseWOData struct {
+		Status bool
 		Data   interface{} `json:"-"`
 		Error  *ApiError
 	}
@@ -19,6 +24,24 @@ type (
 		Description string
 	}
 )
+
+var apiResponseWODataPool = sync.Pool{
+	New: func() interface{} {
+		return &ApiResponseWOData{
+			Error: &ApiError{},
+		}
+	},
+}
+
+func AcquireApiResponseWOData() *ApiResponseWOData {
+	return apiResponseWODataPool.Get().(*ApiResponseWOData)
+}
+
+func ReleaseApiResponseWOData(ar *ApiResponseWOData) {
+	ar.Status = false
+	ar.Error.Code, ar.Error.Message, ar.Error.Description = 0, "", ""
+	apiResponseWODataPool.Put(ar)
+}
 
 var apiResponsePool = sync.Pool{
 	New: func() interface{} {
@@ -53,7 +76,7 @@ func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
 	return
 }
 
-func UnmarshalApiResponse(payload []byte) (_ *ApiResponse, e error) {
-	apirsp := AcquireApiResponse()
+func UnmarshalApiResponse(payload []byte) (_ *ApiResponseWOData, e error) {
+	apirsp := AcquireApiResponseWOData()
 	return apirsp, easyjson.Unmarshal(payload, apirsp)
 }
