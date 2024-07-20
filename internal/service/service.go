@@ -140,7 +140,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 			Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
 			Bucket:   "apiv1-limiter",
 			Timeout:  1 * time.Minute,
-			Reset:    gCli.Bool("limiter-startup-reset"),
+			Reset:    gCli.Bool("limiter-bbolt-reset"),
 		})
 	}
 
