@@ -115,11 +115,11 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 }
 
 func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok bool, e error) {
-	var apirsp *utils.ApiResponse
+	var apirsp *utils.ApiResponseWOData
 	if apirsp, e = utils.UnmarshalApiResponse(rsp.Body()); e != nil || apirsp == nil {
 		return
 	}
-	defer utils.ReleaseApiResponse(apirsp)
+	defer utils.ReleaseApiResponseWOData(apirsp)
 
 	if apirsp.Status && (apirsp.Error == nil || apirsp.Error.Code == 0) {
 		ok = true
