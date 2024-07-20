@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/netip"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -17,7 +16,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/skip"
-	futils "github.com/gofiber/fiber/v2/utils"
 	"github.com/rs/zerolog"
 )
 
@@ -93,29 +91,30 @@ func (m *Service) fiberMiddlewareInitialization() {
 	})
 
 	// parse clients ipAddr with minimal allocs
-	m.fb.Use(func(c *fiber.Ctx) (e error) {
-		ip, ok := netip.AddrFromSlice(c.Context().RemoteIP())
-		if !ok {
-			rlog(c).Warn().Msg("could not parse ip addr, use std generator for limiter")
-			return c.Next()
-		}
+	// m.fb.Use(func(c *fiber.Ctx) (e error) {
+	// 	ip, ok := netip.AddrFromSlice(c.Context().RemoteIP())
+	// 	if !ok {
+	// 		rlog(c).Warn().Msg("could not parse ip addr, use std generator for limiter")
+	// 		return c.Next()
+	// 	}
 
-		ipbufPtr := limiterIPv4Pool.Get().(*[]byte)
-		ipbuf := *ipbufPtr
+	// 	ipbufPtr := limiterIPv4Pool.Get().(*[]byte)
+	// 	ipbuf := *ipbufPtr
+	// 	ipbuf = ip.AppendTo(ipbuf)
 
-		ipbuf = ip.AppendTo(ipbuf)
+	// 	bb := bytebufferpool.Get()
+	// 	defer bytebufferpool.Put(bb)
 
-		// !!
-		// !! FIX - to much allocs here
-		c.Locals("ipv4", futils.UnsafeString(ipbuf))
+	// 	bb.Write(ipbuf)
+	// 	c.Locals("ipv4", bb)
 
-		e = c.Next()
+	// 	e = c.Next()
 
-		ipbuf = ipbuf[:0]
-		*ipbufPtr = ipbuf
-		limiterIPv4Pool.Put(ipbufPtr)
-		return
-	})
+	// 	ipbuf = ipbuf[:0]
+	// 	*ipbufPtr = ipbuf
+	// 	limiterIPv4Pool.Put(ipbufPtr)
+	// 	return
+	// })
 
 	// limiter
 	if gCli.Bool("limiter-enable") {
@@ -123,15 +122,14 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 		m.fb.Use(limiter.New(limiter.Config{
 			Next: func(c *fiber.Ctx) bool {
-				return c.Context().RemoteIP().String() == "127.0.0.1" ||
-					gCli.App.Version == "localbuilded"
+				return c.IP() == "127.0.0.1" || gCli.App.Version == "localbuilded"
 			},
 
 			Max:        gCli.Int("limiter-max-req"),
 			Expiration: gCli.Duration("limiter-records-duration"),
 
 			KeyGenerator: func(c *fiber.Ctx) string {
-				return c.Locals("ipv4").(string)
+				return c.IP()
 			},
 
 			LimitReached: func(c *fiber.Ctx) error {
@@ -175,7 +173,7 @@ func (m *Service) fiberMiddlewareInitialization() {
 			Int("status", status).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
-			Str("ip", c.Locals("ipv4").(string)).
+			Str("ip", c.IP()).
 			Dur("latency", elapsed).
 			Str("user-agent", c.Get(fiber.HeaderUserAgent)).Msg(cause)
 
