@@ -118,26 +118,29 @@ func (m *Service) fiberMiddlewareInitialization() {
 	})
 
 	// limiter
-	limitederr := fiber.NewError(fiber.StatusTooManyRequests, "to many requests has been sended, please wait and try again")
-	m.fb.Use(limiter.New(limiter.Config{
-		// Next: func(c *fiber.Ctx) bool {
-		// 	return c.Context().RemoteIP().String() == "127.0.0.1" ||
-		// 		gCli.App.Version == "localbuilded"
-		// },
+	if gCli.Bool("limiter-enable") {
+		limitederr := fiber.NewError(fiber.StatusTooManyRequests, "to many requests has been sended, please wait and try again")
 
-		Max:        gCli.Int("limiter-max-req"),
-		Expiration: gCli.Duration("limiter-records-duration"),
+		m.fb.Use(limiter.New(limiter.Config{
+			Next: func(c *fiber.Ctx) bool {
+				return c.Context().RemoteIP().String() == "127.0.0.1" ||
+					gCli.App.Version == "localbuilded"
+			},
 
-		KeyGenerator: func(c *fiber.Ctx) string {
-			return c.Locals("ipv4").(string)
-		},
+			Max:        gCli.Int("limiter-max-req"),
+			Expiration: gCli.Duration("limiter-records-duration"),
 
-		LimitReached: func(c *fiber.Ctx) error {
-			return c.App().ErrorHandler(c, limitederr)
-		},
+			KeyGenerator: func(c *fiber.Ctx) string {
+				return c.Locals("ipv4").(string)
+			},
 
-		Storage: m.fbstor,
-	}))
+			LimitReached: func(c *fiber.Ctx) error {
+				return c.App().ErrorHandler(c, limitederr)
+			},
+
+			Storage: m.fbstor,
+		}))
+	}
 
 	// panic recover for all handlers
 	m.fb.Use(recover.New(recover.Config{

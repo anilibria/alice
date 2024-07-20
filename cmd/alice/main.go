@@ -138,6 +138,10 @@ func main() {
 
 		// limiter settings
 		&cli.BoolFlag{
+			Name:               "limiter-enable",
+			DisableDefaultText: true,
+		},
+		&cli.BoolFlag{
 			Name:  "limiter-use-bbolt",
 			Usage: "use bbolt key\value file database instead of memory database",
 		},
