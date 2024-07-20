@@ -31,14 +31,6 @@ var loggerPool = sync.Pool{
 	},
 }
 
-var limiterIPv4Pool = sync.Pool{
-	New: func() interface{} {
-		const max = len("255.255.255.255")
-		ret := make([]byte, 0, max)
-		return &ret
-	},
-}
-
 func (m *Service) fiberMiddlewareInitialization() {
 	// pprof profiler
 	// manual:
@@ -91,6 +83,15 @@ func (m *Service) fiberMiddlewareInitialization() {
 	})
 
 	// parse clients ipAddr with minimal allocs
+	//
+	// var limiterIPv4Pool = sync.Pool{
+	// 	New: func() interface{} {
+	// 		const max = len("255.255.255.255")
+	// 		ret := make([]byte, 0, max)
+	// 		return &ret
+	// 	},
+	// }
+
 	// m.fb.Use(func(c *fiber.Ctx) (e error) {
 	// 	ip, ok := netip.AddrFromSlice(c.Context().RemoteIP())
 	// 	if !ok {
