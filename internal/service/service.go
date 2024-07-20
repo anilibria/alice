@@ -139,16 +139,8 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 		service.fbstor = bbolt.New(bbolt.Config{
 			Database: fmt.Sprintf("%s/%s.db", prefix, gCli.App.Name),
 			Bucket:   "apiv1-limiter",
-
-			// !!!
-			// !!!
-			// !!!
-			Reset: true,
-			// !!!
-			// !!!
-			// !!!
-
-			Timeout: 1 * time.Minute,
+			Timeout:  1 * time.Minute,
+			Reset:    gCli.Bool("limiter-startup-reset"),
 		})
 	}
 

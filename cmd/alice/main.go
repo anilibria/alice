@@ -142,6 +142,11 @@ func main() {
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
+			Name:               "limiter-startup-reset",
+			Usage:              "if bbolt used as storage, reset all limited IPs on startup",
+			DisableDefaultText: true,
+		},
+		&cli.BoolFlag{
 			Name:  "limiter-use-bbolt",
 			Usage: "use bbolt key\value file database instead of memory database",
 		},
