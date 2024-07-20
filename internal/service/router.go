@@ -82,41 +82,6 @@ func (m *Service) fiberMiddlewareInitialization() {
 		return
 	})
 
-	// parse clients ipAddr with minimal allocs
-	//
-	// var limiterIPv4Pool = sync.Pool{
-	// 	New: func() interface{} {
-	// 		const max = len("255.255.255.255")
-	// 		ret := make([]byte, 0, max)
-	// 		return &ret
-	// 	},
-	// }
-
-	// m.fb.Use(func(c *fiber.Ctx) (e error) {
-	// 	ip, ok := netip.AddrFromSlice(c.Context().RemoteIP())
-	// 	if !ok {
-	// 		rlog(c).Warn().Msg("could not parse ip addr, use std generator for limiter")
-	// 		return c.Next()
-	// 	}
-
-	// 	ipbufPtr := limiterIPv4Pool.Get().(*[]byte)
-	// 	ipbuf := *ipbufPtr
-	// 	ipbuf = ip.AppendTo(ipbuf)
-
-	// 	bb := bytebufferpool.Get()
-	// 	defer bytebufferpool.Put(bb)
-
-	// 	bb.Write(ipbuf)
-	// 	c.Locals("ipv4", bb)
-
-	// 	e = c.Next()
-
-	// 	ipbuf = ipbuf[:0]
-	// 	*ipbufPtr = ipbuf
-	// 	limiterIPv4Pool.Put(ipbufPtr)
-	// 	return
-	// })
-
 	// limiter
 	if gCli.Bool("limiter-enable") {
 		limitederr := fiber.NewError(fiber.StatusTooManyRequests, "to many requests has been sended, please wait and try again")
