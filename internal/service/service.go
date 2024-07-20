@@ -62,7 +62,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 	service.fb = fiber.New(fiber.Config{
 		EnableTrustedProxyCheck: len(gCli.String("http-trusted-proxies")) > 0,
 		TrustedProxies:          strings.Split(gCli.String("http-trusted-proxies"), ","),
-		ProxyHeader:             fiber.HeaderXForwardedFor,
+		ProxyHeader:             gCli.String("http-realip-header"),
 
 		AppName:               appname,
 		ServerHeader:          appname,

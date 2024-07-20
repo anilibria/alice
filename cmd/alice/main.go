@@ -100,6 +100,10 @@ func main() {
 			Name:  "http-trusted-proxies",
 			Usage: "format - 192.168.0.0/16; can be separated by comma",
 		},
+		&cli.StringFlag{
+			Name:  "http-realip-header",
+			Value: "X-Real-Ip",
+		},
 		&cli.BoolFlag{
 			Name: "http-prefork",
 			Usage: `enables use of the SO_REUSEPORT socket option;
