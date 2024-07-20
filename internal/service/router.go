@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/rewrite"
 	"github.com/gofiber/fiber/v2/middleware/skip"
 	"github.com/rs/zerolog"
 )
@@ -145,6 +146,18 @@ func (m *Service) fiberMiddlewareInitialization() {
 
 		return
 	})
+
+	// rewrite module for Anilibrix Plus
+	if gCli.Bool("anilibrix-cmpb-mode") {
+		m.fb.Use(rewrite.New(rewrite.Config{
+			Next: func(c *fiber.Ctx) bool {
+				return c.Path()[:2] != "//"
+			},
+			Rules: map[string]string{
+				"//public/api/index.php": "/public/api/index.php",
+			},
+		}))
+	}
 }
 
 func (m *Service) fiberRouterInitialization() {

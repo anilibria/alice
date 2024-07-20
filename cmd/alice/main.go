@@ -245,6 +245,13 @@ func main() {
 			Usage: "Max size of entry in bytes. Used only to calculate initial size for cache shards",
 			Value: 64 * 1024,
 		},
+
+		// custom settings
+		&cli.BoolFlag{
+			Name:               "anilibrix-cmpb-mode",
+			Usage:              "avoiding 'Cannot POST //public/api/index.php' errors with req rewrite",
+			DisableDefaultText: true,
+		},
 	}
 
 	app.Action = func(c *cli.Context) (e error) {
