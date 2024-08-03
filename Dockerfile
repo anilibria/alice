@@ -28,7 +28,7 @@ RUN echo "ready" \
 
 ### container - runner
 ###   for image debuging use tag :debug
-FROM gcr.io/distroless/static-debian11
+FROM gcr.io/distroless/static-debian11:latest
 LABEL maintainer="mindhunter86 <mindhunter86@vkom.cc>"
 
 WORKDIR /usr/local/bin/
