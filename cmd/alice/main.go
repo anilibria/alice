@@ -47,7 +47,7 @@ func main() {
 		Aliases:            []string{"V"},
 		DisableDefaultText: true,
 	}
-	cli.VersionPrinter = func(c *cli.Context) {
+	cli.VersionPrinter = func(_ *cli.Context) {
 		fmt.Printf("%s\t%s\n", version, buildtime)
 	}
 
