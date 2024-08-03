@@ -59,6 +59,10 @@ func (m *GeoIPFileClient) Bootstrap() {
 	<-m.done()
 	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 
+	m.mu.Lock()
+	m.isReady = false
+	m.mu.Unlock()
+
 	m.destroy()
 }
 
