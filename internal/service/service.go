@@ -39,7 +39,7 @@ type Service struct {
 
 	proxy *proxy.Proxy
 	cache *cache.Cache
-	geoip *geoip.GeoIPClient
+	geoip geoip.GeoIPClient
 
 	syslogWriter io.Writer
 
@@ -182,14 +182,20 @@ func (m *Service) Bootstrap() (e error) {
 	gofunc(&wg, m.cache.Bootstrap)
 
 	// geoip module
-	if m.geoip, e = geoip.NewGeoIPClient(gCtx); e != nil {
-		return
+	if gCli.Bool("geoip-enable") {
+		if path := gCli.String("geoip-db-path"); path != "" {
+			gLog.Info().Msg("geoip-db-path found, use provided GeoIP db")
+			m.geoip, e = geoip.NewGeoIPFileClient(gCtx, path)
+		} else {
+			gLog.Debug().Msg("geoip-db-path not found, initialize GeoIP downloading...")
+			m.geoip, e = geoip.NewGeoIPHTTPClient(gCtx)
+		}
+
+		if e != nil {
+			return
+		}
+		gofunc(&wg, m.geoip.Bootstrap)
 	}
-	// !!!
-	// !!!
-	// !!! GEOIP DESTROY()
-	// !!!
-	// !!!
 
 	// proxy module
 	m.proxy = proxy.NewProxy(gCtx)
