@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/anilibria/alice/internal/cache"
+	"github.com/anilibria/alice/internal/geoip"
 	"github.com/anilibria/alice/internal/proxy"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -38,6 +39,7 @@ type Service struct {
 
 	proxy *proxy.Proxy
 	cache *cache.Cache
+	geoip *geoip.GeoIPClient
 
 	syslogWriter io.Writer
 
@@ -178,6 +180,16 @@ func (m *Service) Bootstrap() (e error) {
 	}
 	gCtx = context.WithValue(gCtx, utils.CKCache, m.cache)
 	gofunc(&wg, m.cache.Bootstrap)
+
+	// geoip module
+	if m.geoip, e = geoip.NewGeoIPClient(gCtx); e != nil {
+		return
+	}
+	// !!!
+	// !!!
+	// !!! GEOIP DESTROY()
+	// !!!
+	// !!!
 
 	// proxy module
 	m.proxy = proxy.NewProxy(gCtx)
