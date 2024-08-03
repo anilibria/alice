@@ -255,7 +255,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		m.log.Trace().Msg("found mmdb file, copy to temporary file")
 
 		var written int64
-		if written, e = io.Copy(m.mmfd, tr); e != nil {
+		if written, e = io.Copy(m.mmfd, tr); e != nil { // skipcq: GO-S2110 decompression bomb isn't important here
 			return
 		}
 
