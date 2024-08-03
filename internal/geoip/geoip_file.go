@@ -21,7 +21,6 @@ type GeoIPFileClient struct {
 	isReady  bool
 
 	log  *zerolog.Logger
-	cli  *cli.Context
 	done func() <-chan struct{}
 }
 
