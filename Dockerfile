@@ -19,7 +19,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /usr/sources/alice
 COPY . .
 
-# skipcq: DOK-DL3018 i'm a badboy, disable this shit
+# skipcq: DOK-DL3008 pinning version for upx is not required
 RUN echo "ready" \
   && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X 'main.version=$MAIN_VERSION' -X 'main.buildtime=$MAIN_BUILDTIME'" -o alice cmd/alice/main.go cmd/alice/flags.go \
   && apt-get update && apt-get install --no-install-recommends -y upx-ucl \
