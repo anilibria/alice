@@ -204,7 +204,7 @@ func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 	return m.respondWithStatus(c, nil, fiber.StatusOK)
 }
 
-func (_ *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
+func (*Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
 	if body != nil {
 		c.Response().SetBodyRaw(body)
 	}
