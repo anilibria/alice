@@ -135,7 +135,7 @@ func (m *GeoIPHTTPClient) makeTempFile() (_ *os.File, e error) {
 			return
 		}
 
-		os.MkdirAll(temppath, 0755)
+		os.MkdirAll(temppath, 0700)
 	} else if !fstat.IsDir() {
 		e = errors.New("temporary path is exists and it's not a directory - " + temppath)
 		return
