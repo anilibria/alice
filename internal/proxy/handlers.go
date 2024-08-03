@@ -35,7 +35,7 @@ func (m *Proxy) HandleProxyToDst(c *fiber.Ctx) (e error) {
 	return
 }
 
-// intrnal api handlers
+// internal api handlers
 
 func respondPlainWithStatus(c *fiber.Ctx, status int) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)

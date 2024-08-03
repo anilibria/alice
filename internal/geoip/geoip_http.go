@@ -178,17 +178,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
-	// req.SetRequestURIBytes(m.httpurl.FullURI())
-	// req.URI().SetUsername(string(m.httpurl.Username()))
-	// req.URI().SetPassword(string(m.httpurl.Password()))
-	// req.UseHostHeader = true
 	req.Header.SetUserAgent(m.hclient.Name)
-
-	// req.Header.Set("Accept-Encoding", "deflate")
-	// req.Header.Set("Connection", "keep-alive")
-	// req.Header.Set("Cache-Control", "no-cache")
-	// req.Header.Set("Pragma", "no-cache")
-
 	req.SetRequestURI(m.mmurl)
 	req.URI().SetUsername(m.mmusername)
 	req.URI().SetPassword(m.mmpassword)
@@ -272,12 +262,6 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		m.log.Debug().Msgf("parsed response has written in temporary file with %d bytes", written)
 		break
 	}
-
-	// var written int64
-	// if written, e = rd.WriteTo(m.mmfd); e != nil {
-	// 	return
-	// }
-	// m.log.Debug().Msgf("response was written in temporary file with %d bytes", written)
 
 	// !!! --geoip-download-sha256-skip
 	// !!! --geoip-download-sha256-skip
