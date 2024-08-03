@@ -22,7 +22,7 @@ COPY . .
 # skipcq: DOK-DL3018 i'm a badboy, disable this shit
 RUN echo "ready" \
   && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X 'main.version=$MAIN_VERSION' -X 'main.buildtime=$MAIN_BUILDTIME'" -o alice cmd/alice/main.go cmd/alice/flags.go \
-  && apt-get update && apt-get install -y upx-ucl \
+  && apt-get update && apt-get install --no-install-recommends -y upx-ucl \
   && upx -9 -k alice
 
 
