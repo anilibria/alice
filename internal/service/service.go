@@ -195,6 +195,8 @@ func (m *Service) Bootstrap() (e error) {
 			return
 		}
 		gofunc(&wg, m.geoip.Bootstrap)
+
+		gCtx = context.WithValue(gCtx, utils.CKGeoIP, m.geoip)		
 	}
 
 	// proxy module

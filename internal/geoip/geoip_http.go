@@ -1,10 +1,12 @@
 package geoip
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -33,9 +35,8 @@ type GeoIPHTTPClient struct {
 
 	appname, tempdir string
 
-	mu       sync.RWMutex
-	isFailed bool
-	isReady  bool
+	mu      sync.RWMutex
+	isReady bool
 
 	log *zerolog.Logger
 
@@ -69,11 +70,33 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 	}
 	m.log.Info().Msg("geoip has been initied")
 
+	if e = m.Reader.Verify(); e != nil {
+		m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
+		m.abort()
+		return
+	}
+
+	m.mu.Lock()
+	m.isReady = true
+	m.mu.Unlock()
+
 	<-m.done()
 	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 
 	m.destroy()
 }
+
+func (m *GeoIPHTTPClient) LookupCountryISO(ip string) (string, error) {
+	return lookupISOByIP(m.Reader, ip)
+}
+
+func (m *GeoIPHTTPClient) IsReady() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.isReady
+}
+
+//
 
 func (m *GeoIPHTTPClient) destroy() {
 	if e := m.Close(); e != nil {
@@ -141,7 +164,7 @@ func (m *GeoIPHTTPClient) makeTempFile() (_ *os.File, e error) {
 	}
 
 	var fd *os.File
-	fd, e = os.CreateTemp(temppath, m.appname+"_*")
+	fd, e = os.CreateTemp(temppath, m.appname+"_*.mmdb")
 
 	return fd, e
 }
@@ -216,16 +239,45 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		break
 	}
 
+	// GZIP reader
 	var rd *gzip.Reader
 	if rd, e = gzip.NewReader(bytes.NewBuffer(rsp.Body())); e != nil {
 		return
 	}
 
-	var written int64
-	if written, e = rd.WriteTo(m.mmfd); e != nil {
-		return
+	// TAR reader
+	tr := tar.NewReader(rd)
+	for {
+		var hdr *tar.Header
+		hdr, e = tr.Next()
+
+		if e == io.EOF {
+			break // End of archive
+		} else if e != nil {
+			return
+		}
+
+		m.log.Trace().Msg("found file in maxmind tar archive - " + hdr.Name)
+		if !strings.HasSuffix(hdr.Name, "mmdb") {
+			continue
+		}
+
+		m.log.Trace().Msg("found mmdb file, copy to temporary file")
+
+		var written int64
+		if written, e = io.Copy(m.mmfd, tr); e != nil {
+			return
+		}
+
+		m.log.Debug().Msgf("parsed response has written in temporary file with %d bytes", written)
+		break
 	}
-	m.log.Debug().Msgf("response was written in temporary file with %d bytes", written)
+
+	// var written int64
+	// if written, e = rd.WriteTo(m.mmfd); e != nil {
+	// 	return
+	// }
+	// m.log.Debug().Msgf("response was written in temporary file with %d bytes", written)
 
 	// !!! --geoip-download-sha256-skip
 	// !!! --geoip-download-sha256-skip

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"math"
 	"time"
@@ -15,8 +16,8 @@ type ApiCacheEntry struct {
 	Key       string
 }
 
-func (m *Cache) ApiDump(key string, w io.Writer) error {
-	return m.Write(key, w)
+func (m *Cache) ApiDump(country, key string, w io.Writer) error {
+	return m.Write(country, key, w)
 }
 
 func (m *Cache) ApiDumpKeys() io.Reader {
@@ -27,23 +28,26 @@ func (m *Cache) ApiDumpKeys() io.Reader {
 
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"timestamp", "hash", "key",
+		"timestamp", "zone", "hash", "key",
 	})
 
-	for iter := m.Iterator(); iter.SetNext(); {
-		entry, e := iter.Value()
+	for zone, cache := range m.pools {
+		for iter := cache.Iterator(); iter.SetNext(); {
+			entry, e := iter.Value()
 
-		if e != nil {
-			m.log.Warn().Msg("an error occurred in cache iterator - " + e.Error())
-			continue
+			if e != nil {
+				m.log.Warn().Msg("an error occurred in cache iterator - " + e.Error())
+				continue
+			}
+
+			tb.AppendRow([]interface{}{
+				time.Unix(int64(entry.Timestamp()), 0).Format(time.RFC3339),
+				zoneHumanize[zone],
+				entry.Hash(),
+				entry.Key(),
+			})
+
 		}
-
-		tb.AppendRow([]interface{}{
-			time.Unix(int64(entry.Timestamp()), 0).Format(time.RFC3339),
-			entry.Hash(),
-			entry.Key(),
-		})
-
 	}
 
 	tb.Style().Options.SeparateRows = true
@@ -55,12 +59,25 @@ func (m *Cache) ApiDumpKeys() io.Reader {
 	return buf
 }
 
-func (m *Cache) ApiPurge(key string) error {
-	return m.Delete(key)
+func (m *Cache) ApiPurge(country, key string) error {
+	zone := m.cacheZoneByISO(country)
+	return m.pools[zone].Delete(key)
 }
 
 func (m *Cache) ApiPurgeAll() error {
-	return m.Reset()
+	var errs string
+	for _, cache := range m.pools {
+		if e := cache.Reset(); e != nil {
+			m.log.Error().Msg("an error occurred while resetting the cache - " + e.Error())
+			errs = errs + "\n" + e.Error()
+		}
+	}
+
+	if errs != "" {
+		return errors.New(errs)
+	}
+
+	return nil
 }
 
 func (m *Cache) ApiStats() io.Reader {
@@ -80,24 +97,28 @@ func (m *Cache) ApiStats() io.Reader {
 
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"number of entries", "capacity (mb)", "hits", "misses", "delhits", "delmisses", "collisions",
+		"zone", "number of entries", "capacity (mb)", "hits", "misses", "delhits", "delmisses", "collisions",
 	})
 
-	tb.AppendRow([]interface{}{
-		m.Len(),
-		round(spaceHumanizeMB(m.Capacity()), 2),
-		m.Stats().Hits,
-		m.Stats().Misses,
-		m.Stats().DelHits,
-		m.Stats().DelMisses,
-		m.Stats().Collisions,
-	})
+	for zone, cache := range m.pools {
+		tb.AppendRow([]interface{}{
+			zoneHumanize[zone],
+			cache.Len(),
+			round(spaceHumanizeMB(cache.Capacity()), 2),
+			cache.Stats().Hits,
+			cache.Stats().Misses,
+			cache.Stats().DelHits,
+			cache.Stats().DelMisses,
+			cache.Stats().Collisions,
+		})
+	}
 
 	tb.Style().Options.SeparateRows = true
 
 	return buf
 }
 
-func (m *Cache) ApiStatsReset() error {
-	return m.ResetStats()
+func (m *Cache) ApiStatsReset(country string) error {
+	zone := m.cacheZoneByISO(country)
+	return m.pools[zone].ResetStats()
 }

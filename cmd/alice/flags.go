@@ -206,7 +206,7 @@ func flagsInitialization() []cli.Flag {
 		&cli.DurationFlag{
 			Name:     "cache-clean-window",
 			Category: "Cache settings",
-			Usage: `Interval between removing expired entries (clean up)
+			Usage: `interval between removing expired entries (clean up)
 			If set to <= 0 then no action is performed.
 			Setting to < 1 second is counterproductive — bigcache has a one second resolution.`,
 			Value: 1 * time.Minute,
@@ -214,16 +214,25 @@ func flagsInitialization() []cli.Flag {
 		&cli.IntFlag{
 			Name:     "cache-max-size",
 			Category: "Cache settings",
-			Usage: `cache will not allocate more memory than this limit, value in MB
-			if value is reached then the oldest entries can be overridden for the new ones
-			0 value means no size limit`,
+			Usage: `cache will not allocate more memory than this limit, value in MB;
+			if value is reached then the oldest entries can be overridden for the new ones;
+			0 value means no size limit; if cache-rfngroup-countries is used, then a second pool with the
+			same size will be created, so that the total amount of allocated memory will be X*2`,
 			Value: 1024,
 		},
 		&cli.IntFlag{
 			Name:     "cache-max-entry-size",
 			Category: "Cache settings",
-			Usage:    "Max size of entry in bytes. Used only to calculate initial size for cache shards",
+			Usage:    "max size of entry in bytes. Used only to calculate initial size for cache shards",
 			Value:    64 * 1024,
+		},
+		&cli.StringFlag{
+			Name:     "cache-rfngroup-countries",
+			Category: "Cache settings",
+			Usage: `additional quarantine cache group for filtered responses by backend;
+			for quarantine countries use ISO identifier; multiple comma-separated values are supported;
+			for quarantine group all settings will by copied from default pool, be careful with 
+			cache-max-size; if empty - default cache pool will be used; Example: RU,UA,BY,KZ`,
 		},
 
 		// geoip settings
