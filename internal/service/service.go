@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/anilibria/alice/internal/cache"
+	"github.com/anilibria/alice/internal/geoip"
 	"github.com/anilibria/alice/internal/proxy"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -38,6 +39,7 @@ type Service struct {
 
 	proxy *proxy.Proxy
 	cache *cache.Cache
+	geoip geoip.GeoIPClient
 
 	syslogWriter io.Writer
 
@@ -178,6 +180,24 @@ func (m *Service) Bootstrap() (e error) {
 	}
 	gCtx = context.WithValue(gCtx, utils.CKCache, m.cache)
 	gofunc(&wg, m.cache.Bootstrap)
+
+	// geoip module
+	if gCli.Bool("geoip-enable") {
+		if path := gCli.String("geoip-db-path"); path != "" {
+			gLog.Info().Msg("geoip-db-path found, use provided GeoIP db")
+			m.geoip, e = geoip.NewGeoIPFileClient(gCtx, path)
+		} else {
+			gLog.Debug().Msg("geoip-db-path not found, initialize GeoIP downloading...")
+			m.geoip, e = geoip.NewGeoIPHTTPClient(gCtx)
+		}
+
+		if e != nil {
+			return
+		}
+		gofunc(&wg, m.geoip.Bootstrap)
+
+		gCtx = context.WithValue(gCtx, utils.CKGeoIP, m.geoip)
+	}
 
 	// proxy module
 	m.proxy = proxy.NewProxy(gCtx)

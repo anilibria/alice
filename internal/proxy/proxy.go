@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anilibria/alice/internal/cache"
+	"github.com/anilibria/alice/internal/geoip"
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	futils "github.com/gofiber/fiber/v2/utils"
@@ -19,6 +20,7 @@ type Proxy struct {
 	config *ProxyConfig
 
 	cache *cache.Cache
+	geoip geoip.GeoIPClient
 }
 
 type ProxyConfig struct {
@@ -38,6 +40,7 @@ func NewProxy(c context.Context) *Proxy {
 		},
 
 		cache: c.Value(utils.CKCache).(*cache.Cache),
+		geoip: c.Value(utils.CKGeoIP).(geoip.GeoIPClient),
 	}
 }
 
@@ -153,14 +156,13 @@ func (*Proxy) bypassCache(c *fiber.Ctx) {
 
 func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+	country := m.countryByRemoteIP(c)
 
 	if zerolog.GlobalLevel() < zerolog.InfoLevel {
 		rlog(c).Trace().Msgf("Key: %s", key.UnsafeString())
-		rlog(c).Debug().Msgf("Del %d, Hit %d, Miss %d",
-			m.cache.Stats().DelHits, m.cache.Stats().Hits, m.cache.Stats().Misses)
 	}
 
-	if e = m.cache.Cache(key.UnsafeString(), rsp.Body()); e != nil {
+	if e = m.cache.Cache(country, key.UnsafeString(), rsp.Body()); e != nil {
 		return
 	}
 
@@ -178,9 +180,10 @@ func (m *Proxy) cacheAndRespond(c *fiber.Ctx, rsp *fasthttp.Response) (e error) 
 
 func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+	country := m.countryByRemoteIP(c)
 
 	var ok bool
-	if ok, e = m.cache.IsCached(key.UnsafeString()); e != nil {
+	if ok, e = m.cache.IsCached(country, key.UnsafeString()); e != nil {
 		rlog(c).Warn().Msg("there is problems with cache driver")
 		return
 	} else if !ok {
@@ -192,25 +195,43 @@ func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 
 func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+	country := m.countryByRemoteIP(c)
 
-	if e = m.cache.Write(key.UnsafeString(), c); e != nil {
+	if e = m.cache.Write(country, key.UnsafeString(), c); e != nil {
 		return
 	}
 
 	return m.respondWithStatus(c, nil, fiber.StatusOK)
 }
 
-func (m *Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
-	if zerolog.GlobalLevel() < zerolog.InfoLevel {
-		rlog(c).Debug().Msgf("Stats trace : DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
-			m.cache.Stats().DelHits, m.cache.Stats().DelMisses, m.cache.Stats().Collisions,
-			m.cache.Stats().Hits, m.cache.Stats().Misses)
-	}
-
+func (*Proxy) respondWithStatus(c *fiber.Ctx, body []byte, status int) error {
 	if body != nil {
 		c.Response().SetBodyRaw(body)
 	}
 
 	c.Response().Header.SetContentType(fiber.MIMEApplicationJSONCharsetUTF8)
 	return c.SendStatus(status)
+}
+
+func (m *Proxy) countryByRemoteIP(c *fiber.Ctx) (country string) {
+	if m.geoip == nil {
+		return
+	}
+
+	if !m.geoip.IsReady() {
+		rlog(c).Warn().Msg("geoip is not ready now")
+		return
+	}
+
+	var e error
+	if country, e = m.geoip.LookupCountryISO(c.IP()); e != nil {
+		rlog(c).Warn().Msg("could not parse ISO for client - " + e.Error())
+		return
+	}
+
+	if zerolog.GlobalLevel() < zerolog.InfoLevel {
+		rlog(c).Trace().Msgf("ip: %s; country: %s", c.IP(), country)
+	}
+
+	return
 }

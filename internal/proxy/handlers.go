@@ -35,7 +35,7 @@ func (m *Proxy) HandleProxyToDst(c *fiber.Ctx) (e error) {
 	return
 }
 
-// intrnal api handlers
+// internal api handlers
 
 func respondPlainWithStatus(c *fiber.Ctx, status int) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
@@ -50,7 +50,12 @@ func (m *Proxy) HandleCacheStats(c *fiber.Ctx) (_ error) {
 }
 
 func (m *Proxy) HandleCacheStatsReset(c *fiber.Ctx) (e error) {
-	if e = m.cache.ApiStatsReset(); e != nil {
+	var country string
+	if country = c.Query("country"); country == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
+	}
+
+	if e = m.cache.ApiStatsReset(country); e != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
 	}
 
@@ -63,7 +68,12 @@ func (m *Proxy) HandleCacheDump(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
 	}
 
-	if e = m.cache.ApiDump(cachekey, c); e != nil {
+	var country string
+	if country = c.Query("country"); country == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
+	}
+
+	if e = m.cache.ApiDump(country, cachekey, c); e != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
 	}
 
@@ -81,7 +91,12 @@ func (m *Proxy) HandleCachePurge(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
 	}
 
-	if e = m.cache.ApiPurge(cachekey); e != nil {
+	var country string
+	if country = c.Query("country"); country == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "key could not be empty")
+	}
+
+	if e = m.cache.ApiPurge(country, cachekey); e != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
 	}
 

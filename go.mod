@@ -9,6 +9,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/klauspost/compress v1.17.9
 	github.com/mailru/easyjson v0.7.7
+	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli/v2 v2.27.2
 	github.com/valyala/bytebufferpool v1.0.0

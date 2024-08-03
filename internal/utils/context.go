@@ -7,4 +7,5 @@ const (
 	CKCliCtx
 	CKAbortFunc
 	CKCache
+	CKGeoIP
 )
