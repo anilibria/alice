@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -33,6 +34,9 @@ type GeoIPHTTPClient struct {
 	mmusername string
 	mmpassword string
 
+	mmSkipHashVerify bool
+	mmLastHash       []byte
+
 	appname, tempdir string
 
 	mu      sync.RWMutex
@@ -55,6 +59,8 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 
 		appname: cli.App.Name,
 		tempdir: fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
+
+		mmSkipHashVerify: cli.Bool("geoip-download-sha256-skip"),
 	}
 
 	return gipc.configureHTTPClient(cli)
@@ -169,13 +175,29 @@ func (m *GeoIPHTTPClient) makeTempFile() (_ *os.File, e error) {
 	return fd, e
 }
 
+func (m *GeoIPHTTPClient) acquireGeoIPRequest(parent *fasthttp.Request) (req *fasthttp.Request) {
+	req = fasthttp.AcquireRequest()
+
+	if parent != nil {
+		parent.CopyTo(req)
+	}
+
+	req.SetRequestURI(m.mmurl)
+	req.URI().SetUsername(m.mmusername)
+	req.URI().SetPassword(m.mmpassword)
+
+	req.Header.SetUserAgent(m.hclient.Name)
+
+	return
+}
+
 func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 	if m.mmfd, e = m.makeTempFile(); e != nil {
 		return
 	}
 	m.log.Debug().Msgf("file %s has been successfully allocated", m.mmfd.Name())
 
-	req := fasthttp.AcquireRequest()
+	req := m.acquireGeoIPRequest(nil)
 	defer fasthttp.ReleaseRequest(req)
 
 	req.Header.SetUserAgent(m.hclient.Name)
@@ -186,6 +208,115 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 	rsp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(rsp)
 
+	var expectedHash []byte
+	if !m.mmSkipHashVerify {
+		if expectedHash, e = m.requestSHA256(req); e != nil {
+			return
+		}
+
+		fmt.Printf("%+v\n", expectedHash)
+
+		if bytes.Compare(expectedHash, m.mmLastHash) == 0 {
+			m.log.Info().Msg("maxmind responded sha256 is not changed; mmdb download will be skipped")
+			return m.Reader, e
+		}
+	}
+
+	if e = m.requestWithRedirects(req, rsp); e != nil {
+		return
+	}
+
+	if !m.mmSkipHashVerify {
+		var responseHash []byte
+		if responseHash = m.databaseSHA256Verify(rsp.Body()); len(responseHash) == 0 {
+			e = errors.New("databases SHA256 verification returns an empty hash")
+			return
+		}
+
+		m.log.Trace().Msgf("response - %x", responseHash)
+		m.log.Trace().Msgf("expected - %x", expectedHash)
+
+		if bytes.Compare(responseHash, expectedHash) != 0 {
+			e = errors.New("maxmind databases verification not passed, database could not be updated")
+			return
+		}
+
+		m.log.Debug().Msg("maxmind database sha256 verification passed")
+		m.mmLastHash = expectedHash
+	}
+
+	// GZIP reader
+	var rd *gzip.Reader
+	if rd, e = gzip.NewReader(bytes.NewBuffer(rsp.Body())); e != nil {
+		return
+	}
+
+	// TAR reader
+	tr := tar.NewReader(rd)
+	for {
+		var hdr *tar.Header
+		hdr, e = tr.Next()
+
+		if e == io.EOF {
+			break // End of archive
+		} else if e != nil {
+			return
+		}
+
+		m.log.Trace().Msg("found file in maxmind tar archive - " + hdr.Name)
+		if !strings.HasSuffix(hdr.Name, "mmdb") {
+			continue
+		}
+
+		m.log.Trace().Msg("found mmdb file, copy to temporary file")
+
+		var written int64
+		if written, e = io.Copy(m.mmfd, tr); e != nil { // skipcq: GO-S2110 decompression bomb isn't possible here
+			return
+		}
+
+		m.log.Debug().Msgf("parsed response has written in temporary file with %d bytes", written)
+		break
+	}
+
+	return maxminddb.Open(m.mmfd.Name())
+}
+
+func (m *GeoIPHTTPClient) databaseSHA256Verify(payload []byte) []byte {
+	sha := sha256.New()
+
+	sha.Write(payload)
+	return sha.Sum(nil)
+}
+
+func (m *GeoIPHTTPClient) requestSHA256(req *fasthttp.Request) (hash []byte, e error) {
+	shareq := m.acquireGeoIPRequest(req)
+	defer fasthttp.ReleaseRequest(shareq)
+
+	if !shareq.URI().QueryArgs().Has("suffix") {
+		e = errors.New("unknown maxmind url format; suffix arg is missing, sha256 verification is not possible")
+		return
+	}
+	shareq.URI().QueryArgs().Set("suffix", "tar.gz.sha256")
+
+	rsp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(rsp)
+
+	if e = m.requestWithRedirects(shareq, rsp); e != nil {
+		return
+	}
+
+	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+		m.log.Trace().Msg(rsp.String())
+		m.log.Debug().Msgf("maxmind respond with hash - '%s'", futils.UnsafeString(rsp.Body()[:64]))
+	}
+
+	fmt.Printf("%+v\n", rsp.Body())
+
+	return append(hash, rsp.Body()[:64]...), e
+}
+
+func (m *GeoIPHTTPClient) requestWithRedirects(req *fasthttp.Request, rsp *fasthttp.Response) (e error) {
 	for maxRedirects := 5; ; maxRedirects-- {
 		if maxRedirects == 0 {
 			e = errors.New("maxmind responded with too many redirects, redirects count exceeded")
@@ -229,44 +360,5 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		break
 	}
 
-	// GZIP reader
-	var rd *gzip.Reader
-	if rd, e = gzip.NewReader(bytes.NewBuffer(rsp.Body())); e != nil {
-		return
-	}
-
-	// TAR reader
-	tr := tar.NewReader(rd)
-	for {
-		var hdr *tar.Header
-		hdr, e = tr.Next()
-
-		if e == io.EOF {
-			break // End of archive
-		} else if e != nil {
-			return
-		}
-
-		m.log.Trace().Msg("found file in maxmind tar archive - " + hdr.Name)
-		if !strings.HasSuffix(hdr.Name, "mmdb") {
-			continue
-		}
-
-		m.log.Trace().Msg("found mmdb file, copy to temporary file")
-
-		var written int64
-		if written, e = io.Copy(m.mmfd, tr); e != nil { // skipcq: GO-S2110 decompression bomb isn't important here
-			return
-		}
-
-		m.log.Debug().Msgf("parsed response has written in temporary file with %d bytes", written)
-		break
-	}
-
-	// !!! --geoip-download-sha256-skip
-	// !!! --geoip-download-sha256-skip
-	// !!! --geoip-download-sha256-skip
-	// !!! --geoip-download-sha256-skip
-
-	return maxminddb.Open(m.mmfd.Name())
+	return
 }
