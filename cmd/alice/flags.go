@@ -260,7 +260,7 @@ func flagsInitialization() []cli.Flag {
 		&cli.BoolFlag{
 			Name:     "geoip-download-sha256-skip",
 			Category: "GeoIP",
-			Usage:    `sha256 helps to check database contents of the mmdb database
+			Usage: `sha256 helps to check database contents of the mmdb database
 			and avoid unnecessary requests to MaxMind CDN`,
 		},
 
