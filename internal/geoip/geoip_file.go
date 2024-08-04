@@ -45,8 +45,6 @@ func NewGeoIPFileClient(c context.Context, path string) (_ GeoIPClient, e error)
 }
 
 func (m *GeoIPFileClient) Bootstrap() {
-	m.log.Info().Msg("geoip has been initied")
-
 	if !m.skipVerify {
 		if e := m.Reader.Verify(); e != nil {
 			m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
@@ -55,6 +53,7 @@ func (m *GeoIPFileClient) Bootstrap() {
 		}
 	}
 
+	m.log.Debug().Msg("geoip has been initied")
 	m.setReady(true)
 
 	<-m.done()

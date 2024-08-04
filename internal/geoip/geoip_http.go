@@ -70,7 +70,6 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 		m.abort()
 		return
 	}
-	m.log.Info().Msg("geoip has been initied")
 
 	if !m.skipVerify {
 		if e = m.Reader.Verify(); e != nil {
@@ -80,6 +79,7 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 		}
 	}
 
+	m.log.Debug().Msg("geoip has been initied")
 	m.setReady(true)
 
 	<-m.done()
