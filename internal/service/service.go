@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anilibria/alice/internal/anilibria"
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/geoip"
 	"github.com/anilibria/alice/internal/proxy"
@@ -180,6 +181,9 @@ func (m *Service) Bootstrap() (e error) {
 	}
 	gCtx = context.WithValue(gCtx, utils.CKCache, m.cache)
 	gofunc(&wg, m.cache.Bootstrap)
+
+	// randomizer module
+	anilibria.New(gCtx)
 
 	// geoip module
 	if gCli.Bool("geoip-enable") {
