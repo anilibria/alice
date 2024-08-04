@@ -15,6 +15,7 @@ type GeoIPFileClient struct {
 	*maxminddb.Reader
 
 	appname, tempdir string
+	skipVerify       bool
 
 	mu      sync.RWMutex
 	isReady bool
@@ -34,8 +35,9 @@ func NewGeoIPFileClient(c context.Context, path string) (_ GeoIPClient, e error)
 		done:  c.Done,
 		abort: c.Value(utils.CKAbortFunc).(context.CancelFunc),
 
-		appname: cli.App.Name,
-		tempdir: fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
+		appname:    cli.App.Name,
+		tempdir:    fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
+		skipVerify: cli.Bool("geoip-skip-database-verify"),
 	}
 
 	gipc.Reader, e = maxminddb.Open(path)
@@ -45,24 +47,20 @@ func NewGeoIPFileClient(c context.Context, path string) (_ GeoIPClient, e error)
 func (m *GeoIPFileClient) Bootstrap() {
 	m.log.Info().Msg("geoip has been initied")
 
-	var e error
-	if e = m.Reader.Verify(); e != nil {
-		m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
-		m.abort()
-		return
+	if !m.skipVerify {
+		if e := m.Reader.Verify(); e != nil {
+			m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
+			m.abort()
+			return
+		}
 	}
 
-	m.mu.Lock()
-	m.isReady = true
-	m.mu.Unlock()
+	m.setReady(true)
 
 	<-m.done()
 	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 
-	m.mu.Lock()
-	m.isReady = false
-	m.mu.Unlock()
-
+	m.setReady(false)
 	m.destroy()
 }
 
@@ -82,4 +80,10 @@ func (m *GeoIPFileClient) destroy() {
 	if e := m.Close(); e != nil {
 		m.log.Warn().Msg("could not close maxmind reader - " + e.Error())
 	}
+}
+
+func (m *GeoIPFileClient) setReady(ready bool) {
+	m.mu.Lock()
+	m.isReady = ready
+	m.mu.Unlock()
 }

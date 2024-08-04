@@ -261,6 +261,10 @@ func flagsInitialization() []cli.Flag {
 			Name:     "geoip-download-sha256-skip",
 			Category: "GeoIP",
 		},
+		&cli.BoolFlag{
+			Name:               "geoip-skip-database-verify",
+			DisableDefaultText: true,
+		},
 
 		// custom settings
 		&cli.BoolFlag{

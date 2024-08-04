@@ -34,6 +34,7 @@ type GeoIPHTTPClient struct {
 	mmpassword string
 
 	appname, tempdir string
+	skipVerify       bool
 
 	mu      sync.RWMutex
 	isReady bool
@@ -53,8 +54,9 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 		done:  c.Done,
 		abort: c.Value(utils.CKAbortFunc).(context.CancelFunc),
 
-		appname: cli.App.Name,
-		tempdir: fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
+		appname:    cli.App.Name,
+		tempdir:    fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
+		skipVerify: cli.Bool("geoip-skip-database-verify"),
 	}
 
 	return gipc.configureHTTPClient(cli)
@@ -70,23 +72,20 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 	}
 	m.log.Info().Msg("geoip has been initied")
 
-	if e = m.Reader.Verify(); e != nil {
-		m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
-		m.abort()
-		return
+	if !m.skipVerify {
+		if e = m.Reader.Verify(); e != nil {
+			m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
+			m.abort()
+			return
+		}
 	}
 
-	m.mu.Lock()
-	m.isReady = true
-	m.mu.Unlock()
+	m.setReady(true)
 
 	<-m.done()
 	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 
-	m.mu.Lock()
-	m.isReady = false
-	m.mu.Unlock()
-
+	m.setReady(false)
 	m.destroy()
 }
 
@@ -114,6 +113,12 @@ func (m *GeoIPHTTPClient) destroy() {
 	if e := os.Remove(m.mmfd.Name()); e != nil {
 		m.log.Warn().Msg("could not remove temporary file - " + e.Error())
 	}
+}
+
+func (m *GeoIPHTTPClient) setReady(ready bool) {
+	m.mu.Lock()
+	m.isReady = ready
+	m.mu.Unlock()
 }
 
 func (m *GeoIPHTTPClient) configureHTTPClient(c *cli.Context) (_ GeoIPClient, e error) {
