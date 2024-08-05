@@ -236,14 +236,24 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		m.mmLastHash = expectedHash
 	}
 
-	// GZIP reader
-	var rd *gzip.Reader
-	if rd, e = gzip.NewReader(bytes.NewBuffer(rsp.Body())); e != nil {
+	if e = m.extractTarGzArchive(m.mmfd, bytes.NewBuffer(rsp.Body())); e != nil {
 		return
 	}
 
-	// TAR reader
-	tr := tar.NewReader(rd)
+	return maxminddb.Open(m.mmfd.Name())
+}
+
+func (m *GeoIPHTTPClient) extractTarGzArchive(dst io.Writer, src io.Reader) (e error) {
+	var rd *gzip.Reader
+	if rd, e = gzip.NewReader(src); e != nil {
+		return
+	}
+
+	return m.extractTarArchive(dst, rd)
+}
+
+func (m *GeoIPHTTPClient) extractTarArchive(dst io.Writer, src io.Reader) (e error) {
+	tr := tar.NewReader(src)
 	for {
 		var hdr *tar.Header
 		hdr, e = tr.Next()
@@ -262,7 +272,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		m.log.Trace().Msg("found mmdb file, copy to temporary file")
 
 		var written int64
-		if written, e = io.Copy(m.mmfd, tr); e != nil { // skipcq: GO-S2110 decompression bomb isn't possible here
+		if written, e = io.Copy(dst, tr); e != nil { // skipcq: GO-S2110 decompression bomb isn't possible here
 			return
 		}
 
@@ -270,7 +280,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		break
 	}
 
-	return maxminddb.Open(m.mmfd.Name())
+	return
 }
 
 func (*GeoIPHTTPClient) databaseSHA256Verify(payload []byte) (hash []byte) {
