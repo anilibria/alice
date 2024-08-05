@@ -26,12 +26,13 @@ import (
 )
 
 type GeoIPHTTPClient struct {
+	mu sync.RWMutex
 	*maxminddb.Reader
+	fd *os.File
 
 	hclient *fasthttp.Client
 
 	// maxmind
-	mmfd       *os.File
 	mmurl      string
 	mmusername string
 	mmpassword string
@@ -39,15 +40,15 @@ type GeoIPHTTPClient struct {
 	mmSkipHashVerify bool
 	mmLastHash       []byte
 
-	muUpdate     sync.RWMutex
+	muUpdate     sync.Mutex
 	mmUpdateFreq time.Duration
 	mmRetryFreq  time.Duration
 
 	appname, tempdir string
 	skipVerify       bool
 
-	mu    sync.RWMutex
-	ready bool
+	muReady sync.RWMutex
+	ready   bool
 
 	log *zerolog.Logger
 
@@ -80,7 +81,7 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 func (m *GeoIPHTTPClient) Bootstrap() {
 	var e error
 
-	if m.Reader, e = m.databaseDownload(m.mmfd); e != nil {
+	if m.Reader, e = m.databaseDownload(m.fd); e != nil {
 		m.log.Error().Msg("could not bootstrap GeoIPHTTPClient - " + e.Error())
 		m.abort()
 		return
@@ -107,8 +108,8 @@ func (m *GeoIPHTTPClient) LookupCountryISO(ip string) (string, error) {
 }
 
 func (m *GeoIPHTTPClient) IsReady() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.muReady.RLock()
+	defer m.muReady.RUnlock()
 	return m.ready
 }
 
@@ -127,13 +128,29 @@ LOOP:
 	for {
 		select {
 		case <-update.C:
-			if !m.IsReady() {
+			if !m.muUpdate.TryLock() {
+				m.log.Error().Msg("could not start the mmdb update, last proccess is not marked as complete")
 				update.Reset(m.mmRetryFreq)
-				m.log.Error().Msg("could not start the database update, ready flag is false at this moment")
+				continue
+			}
+			if !m.IsReady() {
+				m.log.Error().Msg("could not start the mmdb update, ready flag is false at this moment")
+				update.Reset(m.mmRetryFreq)
+				m.muUpdate.Unlock()
 				continue
 			}
 
-			//
+			var newfd *os.File
+			newrd, e := m.databaseDownload(newfd)
+			if e != nil {
+				m.log.Error().Msg("could not start the mmdb update - " + e.Error())
+				update.Reset(m.mmRetryFreq)
+				m.muUpdate.Unlock()
+				continue
+			}
+
+			m.rotateActiveDB(newfd, newrd)
+			m.muUpdate.Unlock()
 		case <-m.done():
 			m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 			break LOOP
@@ -146,19 +163,38 @@ func (m *GeoIPHTTPClient) destroy() {
 		m.log.Warn().Msg("could not close maxmind reader - " + e.Error())
 	}
 
-	if e := m.mmfd.Close(); e != nil {
+	m.destroyDB(m.fd, m.Reader)
+}
+
+func (m *GeoIPHTTPClient) destroyDB(mmfile *os.File, mmreader *maxminddb.Reader) {
+	if e := mmreader.Close(); e != nil {
+		m.log.Warn().Msg("could not close maxmind reader - " + e.Error())
+	}
+
+	if e := mmfile.Close(); e != nil {
 		m.log.Warn().Msg("could not close temporary geoip file - " + e.Error())
 	}
 
-	if e := os.Remove(m.mmfd.Name()); e != nil {
+	if e := os.Remove(mmfile.Name()); e != nil {
 		m.log.Warn().Msg("could not remove temporary file - " + e.Error())
 	}
 }
 
-func (m *GeoIPHTTPClient) setReady(ready bool) {
+func (m *GeoIPHTTPClient) rotateActiveDB(mmfile *os.File, mmreader *maxminddb.Reader) {
+	m.setReady(false)
+	defer m.setReady(true)
+
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.destroyDB(m.fd, m.Reader)
+	m.Reader, m.fd = mmreader, mmfile
+}
+
+func (m *GeoIPHTTPClient) setReady(ready bool) {
+	m.muReady.Lock()
 	m.ready = ready
-	m.mu.Unlock()
+	m.muReady.Unlock()
 }
 
 func (m *GeoIPHTTPClient) configureHTTPClient(c *cli.Context) (_ GeoIPClient, e error) {
@@ -232,10 +268,6 @@ func (m *GeoIPHTTPClient) acquireGeoIPRequest(parent *fasthttp.Request) (req *fa
 	req.Header.SetUserAgent(m.hclient.Name)
 
 	return
-}
-
-func (*GeoIPHTTPClient) rotateActiveDB(mmfile *os.File, mmreader *maxminddb.Reader) {
-
 }
 
 func (m *GeoIPHTTPClient) databaseDownload(tmpfile *os.File) (_ *maxminddb.Reader, e error) {

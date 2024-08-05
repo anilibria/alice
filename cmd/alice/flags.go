@@ -278,6 +278,8 @@ func flagsInitialization() []cli.Flag {
 		},
 		&cli.BoolFlag{
 			Name:               "geoip-skip-database-verify",
+			Category:           "GeoIP",
+			Usage:              "skip mmdb contents validation by vendor function db.Verify()",
 			DisableDefaultText: true,
 		},
 
