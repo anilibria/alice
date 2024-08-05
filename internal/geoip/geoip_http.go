@@ -40,8 +40,8 @@ type GeoIPHTTPClient struct {
 
 	appname, tempdir string
 
-	mu      sync.RWMutex
-	isReady bool
+	mu    sync.RWMutex
+	ready bool
 
 	log *zerolog.Logger
 
@@ -84,7 +84,7 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 	}
 
 	m.mu.Lock()
-	m.isReady = true
+	m.ready = true
 	m.mu.Unlock()
 
 	<-m.done()
@@ -100,7 +100,7 @@ func (m *GeoIPHTTPClient) LookupCountryISO(ip string) (string, error) {
 func (m *GeoIPHTTPClient) IsReady() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.isReady
+	return m.ready
 }
 
 //
@@ -200,11 +200,6 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 
 	req := m.acquireGeoIPRequest(nil)
 	defer fasthttp.ReleaseRequest(req)
-
-	req.Header.SetUserAgent(m.hclient.Name)
-	req.SetRequestURI(m.mmurl)
-	req.URI().SetUsername(m.mmusername)
-	req.URI().SetPassword(m.mmpassword)
 
 	rsp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(rsp)
@@ -312,11 +307,6 @@ func (m *GeoIPHTTPClient) requestSHA256(req *fasthttp.Request) (_ []byte, e erro
 		m.log.Trace().Msgf("maxmind body response %x", rsp.Body())
 	}
 
-	rsp.StreamBody = false
-
-	fmt.Printf("body - %x\n", rsp.Body())
-	fmt.Printf("body string - %s\n", futils.UnsafeString(rsp.Body()))
-
 	hash := make([]byte, 64)
 	copy(hash, rsp.Body()[:64])
 
@@ -349,18 +339,14 @@ func (m *GeoIPHTTPClient) requestWithRedirects(req *fasthttp.Request, rsp *fasth
 		}
 
 		if status != fasthttp.StatusOK {
+			e = errors.New(fmt.Sprintf("maxmind api returned %d response", status))
 			m.log.Trace().Msg(rsp.String())
-			m.log.Error().Msgf("maxmind responded with %d", status)
-
-			e = errors.New("maxmind api returned non 200 response")
 			return
 		}
 
 		if len(rsp.Body()) == 0 {
-			m.log.Trace().Msg(rsp.String())
-			m.log.Error().Msg("maxmind responded with empty body")
-
 			e = errors.New("maxmind responded with empty body")
+			m.log.Trace().Msg(rsp.String())
 			return
 		}
 
