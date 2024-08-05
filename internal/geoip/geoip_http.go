@@ -122,6 +122,7 @@ func (m *GeoIPHTTPClient) loop() {
 	var update *time.Timer
 	if m.mmUpdateFreq != 0 {
 		update = time.NewTimer(m.mmUpdateFreq)
+		m.log.Debug().Msgf("geoip database updater enabled; update period - %s", m.mmUpdateFreq.String())
 	}
 
 LOOP:
@@ -139,17 +140,30 @@ LOOP:
 				m.muUpdate.Unlock()
 				continue
 			}
+			m.log.Info().Msg("starting geoip database update")
+			m.log.Debug().Msg("geoip database update, downloading...")
+			defer m.log.Debug().Msg("geoip database update, finished")
 
 			var newfd *os.File
 			newrd, e := m.databaseDownload(newfd)
 			if e != nil {
-				m.log.Error().Msg("could not start the mmdb update - " + e.Error())
+				m.log.Error().Msg("could update the mmdb - " + e.Error())
 				update.Reset(m.mmRetryFreq)
 				m.muUpdate.Unlock()
 				continue
 			}
 
+			m.log.Trace().Msg("geoip database update, old mmdb - " + m.fd.Name())
+			m.log.Trace().Msg("geoip database update, new mmdb - " + newfd.Name())
+
+			m.log.Debug().Msg("geoip database update, rotating...")
 			m.rotateActiveDB(newfd, newrd)
+
+			if !m.skipVerify {
+				m.log.Debug().Msg("geoip database update, verifying...")
+				m.Verify()
+			}
+
 			m.muUpdate.Unlock()
 		case <-m.done():
 			m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
@@ -159,10 +173,6 @@ LOOP:
 }
 
 func (m *GeoIPHTTPClient) destroy() {
-	if e := m.Close(); e != nil {
-		m.log.Warn().Msg("could not close maxmind reader - " + e.Error())
-	}
-
 	m.destroyDB(m.fd, m.Reader)
 }
 
