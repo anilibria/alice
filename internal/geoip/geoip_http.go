@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/klauspost/compress/gzip"
@@ -38,6 +39,10 @@ type GeoIPHTTPClient struct {
 	mmSkipHashVerify bool
 	mmLastHash       []byte
 
+	muUpdate     sync.RWMutex
+	mmUpdateFreq time.Duration
+	mmRetryFreq  time.Duration
+
 	appname, tempdir string
 
 	mu    sync.RWMutex
@@ -62,6 +67,8 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 		tempdir: fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
 
 		mmSkipHashVerify: cli.Bool("geoip-download-sha256-skip"),
+		mmUpdateFreq:     cli.Duration("geoip-update-frequency"),
+		mmRetryFreq:      cli.Duration("geoip-update-retry-frequency"),
 	}
 
 	return gipc.configureHTTPClient(cli)
@@ -70,7 +77,7 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 func (m *GeoIPHTTPClient) Bootstrap() {
 	var e error
 
-	if m.Reader, e = m.databaseDownload(); e != nil {
+	if m.Reader, e = m.databaseDownload(m.mmfd); e != nil {
 		m.log.Error().Msg("could not bootstrap GeoIPHTTPClient - " + e.Error())
 		m.abort()
 		return
@@ -87,9 +94,7 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 	m.ready = true
 	m.mu.Unlock()
 
-	<-m.done()
-	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
-
+	m.loop()
 	m.destroy()
 }
 
@@ -104,6 +109,33 @@ func (m *GeoIPHTTPClient) IsReady() bool {
 }
 
 //
+
+func (m *GeoIPHTTPClient) loop() {
+	m.log.Debug().Msg("initiate geoip db update loop...")
+	defer m.log.Debug().Msg("geoip db update loop has been closed")
+
+	var update *time.Timer
+	if m.mmUpdateFreq != 0 {
+		update = time.NewTimer(m.mmUpdateFreq)
+	}
+
+LOOP:
+	for {
+		select {
+		case <-update.C:
+			if !m.IsReady() {
+				update.Reset(m.mmRetryFreq)
+				m.log.Error().Msg("could not start the database update, ready flag is false at this moment")
+				continue
+			}
+
+			//
+		case <-m.done():
+			m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
+			break LOOP
+		}
+	}
+}
 
 func (m *GeoIPHTTPClient) destroy() {
 	if e := m.Close(); e != nil {
@@ -192,11 +224,15 @@ func (m *GeoIPHTTPClient) acquireGeoIPRequest(parent *fasthttp.Request) (req *fa
 	return
 }
 
-func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
-	if m.mmfd, e = m.makeTempFile(); e != nil {
+func (*GeoIPHTTPClient) rotateActiveDB(mmfile *os.File, mmreader *maxminddb.Reader) {
+
+}
+
+func (m *GeoIPHTTPClient) databaseDownload(tmpfile *os.File) (_ *maxminddb.Reader, e error) {
+	if tmpfile, e = m.makeTempFile(); e != nil {
 		return
 	}
-	m.log.Debug().Msgf("file %s has been successfully allocated", m.mmfd.Name())
+	m.log.Debug().Msgf("file %s has been successfully allocated", tmpfile.Name())
 
 	req := m.acquireGeoIPRequest(nil)
 	defer fasthttp.ReleaseRequest(req)
@@ -236,11 +272,11 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 		m.mmLastHash = expectedHash
 	}
 
-	if e = m.extractTarGzArchive(m.mmfd, bytes.NewBuffer(rsp.Body())); e != nil {
+	if e = m.extractTarGzArchive(tmpfile, bytes.NewBuffer(rsp.Body())); e != nil {
 		return
 	}
 
-	return maxminddb.Open(m.mmfd.Name())
+	return maxminddb.Open(tmpfile.Name())
 }
 
 func (m *GeoIPHTTPClient) extractTarGzArchive(dst io.Writer, src io.Reader) (e error) {
