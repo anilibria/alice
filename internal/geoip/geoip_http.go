@@ -273,7 +273,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 	return maxminddb.Open(m.mmfd.Name())
 }
 
-func (m *GeoIPHTTPClient) databaseSHA256Verify(payload []byte) (hash []byte) {
+func (*GeoIPHTTPClient) databaseSHA256Verify(payload []byte) (hash []byte) {
 	sha := sha256.New()
 	sha.Write(payload)
 
