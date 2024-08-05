@@ -312,9 +312,7 @@ func (m *GeoIPHTTPClient) requestSHA256(req *fasthttp.Request) (_ []byte, e erro
 
 	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
 		m.log.Trace().Msg(rsp.String())
-		m.log.Trace().Msgf("maxmind body response %x", rsp.Body())
-		m.log.Debug().Msgf("maxmind respond with hash - '%s'", futils.UnsafeString(rsp.Body()[:64]))
-		m.log.Trace().Msgf("maxmind body response %x", rsp.Body())
+		m.log.Debug().Msgf("maxmind respond with hash - '%s' (string)", futils.UnsafeString(rsp.Body()[:64]))
 	}
 
 	hash := make([]byte, 64)
