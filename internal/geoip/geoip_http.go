@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -214,10 +215,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 			return
 		}
 
-		m.log.Trace().Msgf("expected - %+v", expectedHash)
-		m.log.Trace().Msgf("expected - %x", expectedHash)
-
-		if len(m.mmLastHash) != 0 && bytes.Compare(expectedHash, m.mmLastHash) == 0 {
+		if len(m.mmLastHash) != 0 && bytes.Equal(expectedHash, m.mmLastHash) {
 			m.log.Info().Msg("maxmind responded sha256 is not changed; mmdb download will be skipped")
 			return m.Reader, e
 		}
@@ -234,10 +232,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 			return
 		}
 
-		m.log.Trace().Msgf("response - %x", responseHash)
-		m.log.Trace().Msgf("expected - %x", expectedHash)
-
-		if bytes.Compare(responseHash, expectedHash) != 0 {
+		if !bytes.Equal(responseHash, expectedHash) {
 			e = errors.New("maxmind databases verification not passed, database could not be updated")
 			return
 		}
@@ -283,11 +278,14 @@ func (m *GeoIPHTTPClient) databaseDownload() (_ *maxminddb.Reader, e error) {
 	return maxminddb.Open(m.mmfd.Name())
 }
 
-func (m *GeoIPHTTPClient) databaseSHA256Verify(payload []byte) []byte {
+func (m *GeoIPHTTPClient) databaseSHA256Verify(payload []byte) (hash []byte) {
 	sha := sha256.New()
-
 	sha.Write(payload)
-	return sha.Sum(nil)
+
+	hash = make([]byte, sha.Size()*2)
+	hex.Encode(hash, sha.Sum(nil))
+
+	return
 }
 
 func (m *GeoIPHTTPClient) requestSHA256(req *fasthttp.Request) (_ []byte, e error) {
@@ -322,19 +320,7 @@ func (m *GeoIPHTTPClient) requestSHA256(req *fasthttp.Request) (_ []byte, e erro
 	hash := make([]byte, 64)
 	copy(hash, rsp.Body()[:64])
 
-	fmt.Printf("appending - %x\n", rsp.Body()[:64])
-	fmt.Printf("appending string - %s\n", futils.UnsafeString(rsp.Body()[:64]))
-	// hash = append(hash, rsp.Body()[:64]...)
-	fmt.Printf("finished - %x\n", hash)
-	fmt.Printf("finished string - %s\n", futils.UnsafeString(hash))
-
-	buf := bytes.NewBufferString(futils.UnsafeString(rsp.Body()[:64]))
-
-	fmt.Printf("ss finished - %x\n", buf.Bytes())
-	fmt.Printf("ss finished string - %s\n", futils.UnsafeString(buf.Bytes()))
-
-	// return append(hash, rsp.Body()[:64]...), e
-	return
+	return hash, e
 }
 
 func (m *GeoIPHTTPClient) requestWithRedirects(req *fasthttp.Request, rsp *fasthttp.Response) (e error) {
