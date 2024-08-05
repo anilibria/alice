@@ -44,6 +44,7 @@ type GeoIPHTTPClient struct {
 	mmRetryFreq  time.Duration
 
 	appname, tempdir string
+	skipVerify       bool
 
 	mu    sync.RWMutex
 	ready bool
@@ -66,6 +67,8 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 		appname: cli.App.Name,
 		tempdir: fmt.Sprintf("%s_%s", cli.App.Name, cli.App.Version),
 
+		skipVerify: cli.Bool("geoip-skip-database-verify"),
+
 		mmSkipHashVerify: cli.Bool("geoip-download-sha256-skip"),
 		mmUpdateFreq:     cli.Duration("geoip-update-frequency"),
 		mmRetryFreq:      cli.Duration("geoip-update-retry-frequency"),
@@ -82,19 +85,20 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 		m.abort()
 		return
 	}
-	m.log.Info().Msg("geoip has been initied")
 
-	if e = m.Reader.Verify(); e != nil {
-		m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
-		m.abort()
-		return
+	if !m.skipVerify {
+		if e = m.Reader.Verify(); e != nil {
+			m.log.Error().Msg("could not verify maxmind DB - " + e.Error())
+			m.abort()
+			return
+		}
 	}
 
-	m.mu.Lock()
-	m.ready = true
-	m.mu.Unlock()
+	m.setReady(true)
 
 	m.loop()
+	m.setReady(false)
+
 	m.destroy()
 }
 
@@ -149,6 +153,12 @@ func (m *GeoIPHTTPClient) destroy() {
 	if e := os.Remove(m.mmfd.Name()); e != nil {
 		m.log.Warn().Msg("could not remove temporary file - " + e.Error())
 	}
+}
+
+func (m *GeoIPHTTPClient) setReady(ready bool) {
+	m.mu.Lock()
+	m.ready = ready
+	m.mu.Unlock()
 }
 
 func (m *GeoIPHTTPClient) configureHTTPClient(c *cli.Context) (_ GeoIPClient, e error) {

@@ -21,8 +21,8 @@ const (
 )
 
 var zoneHumanize = map[cacheZone]string{
-	defaultCache:    "default cache",
-	quarantineCache: "quarantine cache",
+	defaultCache:    "default",
+	quarantineCache: "quarantine",
 }
 
 type Cache struct {
@@ -107,7 +107,8 @@ func (m *Cache) Bootstrap() {
 	m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 
 	for zone, cache := range m.pools {
-		m.log.Info().Msgf("Serving SUMMARY: DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+		m.log.Info().Msgf("Cache %s serving SUMMARY: DelHits %d, DelMiss %d, Coll %d, Hit %d, Miss %d",
+			zoneHumanize[zone],
 			cache.Stats().DelHits, cache.Stats().DelMisses, cache.Stats().Collisions,
 			cache.Stats().Hits, cache.Stats().Misses)
 

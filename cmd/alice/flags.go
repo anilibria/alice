@@ -276,6 +276,10 @@ func flagsInitialization() []cli.Flag {
 			Category: "GeoIP",
 			Value:    1 * time.Hour,
 		},
+		&cli.BoolFlag{
+			Name:               "geoip-skip-database-verify",
+			DisableDefaultText: true,
+		},
 
 		// custom settings
 		&cli.BoolFlag{
