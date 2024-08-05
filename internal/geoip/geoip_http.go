@@ -347,7 +347,7 @@ func (m *GeoIPHTTPClient) requestWithRedirects(req *fasthttp.Request, rsp *fasth
 		}
 
 		if status != fasthttp.StatusOK {
-			e = errors.New(fmt.Sprintf("maxmind api returned %d response", status))
+			e = fmt.Errorf("maxmind api returned %d response", status)
 			m.log.Trace().Msg(rsp.String())
 			return
 		}
