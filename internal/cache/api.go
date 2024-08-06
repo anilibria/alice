@@ -93,6 +93,13 @@ func (m *Cache) ApiStats() io.Reader {
 		return math.Round(val*ratio) / ratio
 	}
 
+	rate := func(misses, hits int) int {
+		if misses == 0 || hits == 0 {
+			return 0
+		}
+		return misses * 100 / hits
+	}
+
 	buf := bytes.NewBuffer(nil)
 
 	tb.SetOutputMirror(buf)
@@ -110,7 +117,7 @@ func (m *Cache) ApiStats() io.Reader {
 			cache.Stats().DelHits,
 			cache.Stats().DelMisses,
 			cache.Stats().Collisions,
-			round(float64(cache.Stats().Misses*100/cache.Stats().Hits), 2),
+			round(float64(rate(int(cache.Stats().Misses), int(cache.Stats().Hits))), 2),
 		})
 	}
 
