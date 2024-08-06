@@ -38,7 +38,10 @@ func (m *geoIPRecord) reset() {
 }
 
 func lookupISOByIP(mu *sync.RWMutex, mxrd *maxminddb.Reader, rawip string) (iso string, e error) {
-	mu.RLock()
+	if !mu.TryRLock() {
+		e = errors.New("could not get lock for geoip lookup()")
+		return
+	}
 	defer mu.RUnlock()
 
 	var ip netip.Addr
