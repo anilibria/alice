@@ -81,7 +81,7 @@ func NewGeoIPHTTPClient(c context.Context) (_ GeoIPClient, e error) {
 func (m *GeoIPHTTPClient) Bootstrap() {
 	var e error
 
-	if m.Reader, e = m.databaseDownload(m.fd); e != nil {
+	if m.fd, m.Reader, e = m.databaseDownload(); e != nil {
 		m.log.Error().Msg("could not bootstrap GeoIPHTTPClient - " + e.Error())
 		m.abort()
 		return
@@ -144,9 +144,12 @@ LOOP:
 			m.log.Debug().Msg("geoip database update, downloading...")
 			defer m.log.Debug().Msg("geoip database update, finished")
 
-			var newfd *os.File
-			newrd, e := m.databaseDownload(newfd)
-			if e != nil {
+			newfd, newrd, e := m.databaseDownload()
+			if e != nil && newfd != nil && newrd != nil { // update is not required
+				m.log.Info().Msg(e.Error())
+				m.muUpdate.Unlock()
+				continue
+			} else if e != nil {
 				m.log.Error().Msg("could update the mmdb - " + e.Error())
 				update.Reset(m.mmRetryFreq)
 				m.muUpdate.Unlock()
@@ -177,14 +180,17 @@ func (m *GeoIPHTTPClient) destroy() {
 }
 
 func (m *GeoIPHTTPClient) destroyDB(mmfile *os.File, mmreader *maxminddb.Reader) {
+	m.log.Trace().Msg("geoip database destroy, maxmind closing...")
 	if e := mmreader.Close(); e != nil {
 		m.log.Warn().Msg("could not close maxmind reader - " + e.Error())
 	}
 
+	m.log.Trace().Msg("geoip database destroy, mmdb closing...")
 	if e := mmfile.Close(); e != nil {
 		m.log.Warn().Msg("could not close temporary geoip file - " + e.Error())
 	}
 
+	m.log.Trace().Msg("geoip database destroy, mmdb removing...")
 	if e := os.Remove(mmfile.Name()); e != nil {
 		m.log.Warn().Msg("could not remove temporary file - " + e.Error())
 	}
@@ -198,7 +204,7 @@ func (m *GeoIPHTTPClient) rotateActiveDB(mmfile *os.File, mmreader *maxminddb.Re
 	defer m.mu.Unlock()
 
 	m.destroyDB(m.fd, m.Reader)
-	m.Reader, m.fd = mmreader, mmfile
+	m.fd, m.Reader = mmfile, mmreader
 }
 
 func (m *GeoIPHTTPClient) setReady(ready bool) {
@@ -280,11 +286,11 @@ func (m *GeoIPHTTPClient) acquireGeoIPRequest(parent *fasthttp.Request) (req *fa
 	return
 }
 
-func (m *GeoIPHTTPClient) databaseDownload(tmpfile *os.File) (_ *maxminddb.Reader, e error) {
-	if tmpfile, e = m.makeTempFile(); e != nil {
+func (m *GeoIPHTTPClient) databaseDownload() (fd *os.File, _ *maxminddb.Reader, e error) {
+	if fd, e = m.makeTempFile(); e != nil {
 		return
 	}
-	m.log.Debug().Msgf("file %s has been successfully allocated", tmpfile.Name())
+	m.log.Debug().Msgf("file %s has been successfully allocated", fd.Name())
 
 	req := m.acquireGeoIPRequest(nil)
 	defer fasthttp.ReleaseRequest(req)
@@ -299,8 +305,8 @@ func (m *GeoIPHTTPClient) databaseDownload(tmpfile *os.File) (_ *maxminddb.Reade
 		}
 
 		if len(m.mmLastHash) != 0 && bytes.Equal(expectedHash, m.mmLastHash) {
-			m.log.Info().Msg("maxmind responded sha256 is not changed; mmdb download will be skipped")
-			return m.Reader, e
+			e = errors.New("maxmind responded sha256 is not changed; mmdb download will be skipped")
+			return m.fd, m.Reader, e
 		}
 	}
 
@@ -324,11 +330,14 @@ func (m *GeoIPHTTPClient) databaseDownload(tmpfile *os.File) (_ *maxminddb.Reade
 		m.mmLastHash = expectedHash
 	}
 
-	if e = m.extractTarGzArchive(tmpfile, bytes.NewBuffer(rsp.Body())); e != nil {
+	if e = m.extractTarGzArchive(fd, bytes.NewBuffer(rsp.Body())); e != nil {
 		return
 	}
 
-	return maxminddb.Open(tmpfile.Name())
+	var reader *maxminddb.Reader
+	reader, e = maxminddb.Open(fd.Name())
+
+	return fd, reader, e
 }
 
 func (m *GeoIPHTTPClient) extractTarGzArchive(dst io.Writer, src io.Reader) (e error) {
