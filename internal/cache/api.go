@@ -89,6 +89,10 @@ func (m *Cache) ApiStats() io.Reader {
 	}
 
 	round := func(val float64, precision uint) float64 {
+		if val == 0 {
+			return 0
+		}
+
 		ratio := math.Pow(10, float64(precision))
 		return math.Round(val*ratio) / ratio
 	}
@@ -97,6 +101,7 @@ func (m *Cache) ApiStats() io.Reader {
 		if misses == 0 || hits == 0 {
 			return 0
 		}
+
 		return misses * 100 / hits
 	}
 
