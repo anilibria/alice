@@ -99,7 +99,7 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 }
 
 func (m *GeoIPHTTPClient) LookupCountryISO(ip string) (string, error) {
-	return lookupISOByIP(m.Reader, ip)
+	return lookupISOByIP(&m.mu, m.Reader, ip)
 }
 
 func (m *GeoIPHTTPClient) IsReady() bool {

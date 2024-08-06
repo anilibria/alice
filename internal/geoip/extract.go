@@ -30,19 +30,19 @@ func extractTarArchive(log *zerolog.Logger, dst io.Writer, src io.Reader) (e err
 			return
 		}
 
-		m.log.Trace().Msg("found file in maxmind tar archive - " + hdr.Name)
+		log.Trace().Msg("found file in maxmind tar archive - " + hdr.Name)
 		if !strings.HasSuffix(hdr.Name, "mmdb") {
 			continue
 		}
 
-		m.log.Trace().Msg("found mmdb file, copy to temporary file")
+		log.Trace().Msg("found mmdb file, copy to temporary file")
 
 		var written int64
 		if written, e = io.Copy(dst, tr); e != nil { // skipcq: GO-S2110 decompression bomb isn't possible here
 			return
 		}
 
-		m.log.Debug().Msgf("parsed response has written in temporary file with %d bytes", written)
+		log.Debug().Msgf("parsed response has written in temporary file with %d bytes", written)
 		break
 	}
 

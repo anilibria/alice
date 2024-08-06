@@ -269,7 +269,7 @@ func flagsInitialization() []cli.Flag {
 			Usage: `when geoip-maxmind-permalink is selected and geoip-db-path is empty,
 			once within a certain 'PERIOD' of time app will update the geoip database;
 			do not forget about maxmind donwload limits; set to 0s if want to disable`,
-			Value: 30 * time.Second,
+			Value: 24 * time.Hour,
 		},
 		&cli.DurationFlag{
 			Name:     "geoip-update-retry-frequency",

@@ -37,7 +37,10 @@ func (m *geoIPRecord) reset() {
 	*m = geoIPRecord{}
 }
 
-func lookupISOByIP(mxrd *maxminddb.Reader, rawip string) (iso string, e error) {
+func lookupISOByIP(mu *sync.RWMutex, mxrd *maxminddb.Reader, rawip string) (iso string, e error) {
+	mu.RLock()
+	defer mu.RUnlock()
+
 	var ip netip.Addr
 	if ip, e = netip.ParseAddr(rawip); e != nil {
 		e = errors.New(fmt.Sprintf("could not parse ip addr with netip library, ip - %+v - ", rawip) + e.Error())
