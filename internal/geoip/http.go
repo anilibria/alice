@@ -81,6 +81,7 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 		m.abort()
 		return
 	}
+	defer m.destroyDB(m.fd, m.Reader)
 
 	if !m.skipVerify {
 		if e = m.Reader.Verify(); e != nil {
@@ -91,11 +92,9 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 	}
 
 	m.setReady(true)
+	defer m.setReady(false)
 
 	m.loop()
-	m.setReady(false)
-
-	m.destroyDB(m.fd, m.Reader)
 }
 
 func (m *GeoIPHTTPClient) LookupCountryISO(ip string) (string, error) {
