@@ -82,6 +82,7 @@ func (m *GeoIPHTTPClient) Bootstrap() {
 		return
 	}
 	defer m.destroyDB(m.fd, m.Reader)
+	m.log.Info().Msg("geoip initial downloading has been completed")
 
 	if !m.skipVerify {
 		if e = m.Reader.Verify(); e != nil {
@@ -116,7 +117,7 @@ func (m *GeoIPHTTPClient) loop() {
 	var update *time.Timer
 	if m.mmUpdateFreq != 0 {
 		update = time.NewTimer(m.mmUpdateFreq)
-		m.log.Debug().Msgf("geoip database updater enabled; update period - %s", m.mmUpdateFreq.String())
+		m.log.Info().Msgf("geoip database updater enabled; update period - %s", m.mmUpdateFreq.String())
 	}
 
 LOOP:
@@ -136,7 +137,7 @@ LOOP:
 			}
 			m.log.Info().Msg("starting geoip database update")
 			m.log.Debug().Msg("geoip database update, downloading...")
-			defer m.log.Debug().Msg("geoip database update, finished")
+			defer m.log.Info().Msg("geoip database update, finished")
 
 			newfd, newrd, e := m.databaseDownload()
 			if e != nil && newfd != nil && newrd != nil { // update is not required
@@ -323,7 +324,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (fd *os.File, _ *maxminddb.Reader, 
 	if fd, e = m.makeTempFile(); e != nil {
 		return
 	}
-	m.log.Debug().Msgf("file %s has been successfully allocated", fd.Name())
+	m.log.Info().Msgf("file %s has been successfully allocated", fd.Name())
 
 	req := m.acquireGeoIPRequest(nil)
 	defer fasthttp.ReleaseRequest(req)
@@ -359,7 +360,7 @@ func (m *GeoIPHTTPClient) databaseDownload() (fd *os.File, _ *maxminddb.Reader, 
 			return
 		}
 
-		m.log.Debug().Msg("maxmind database sha256 verification passed")
+		m.log.Info().Msg("maxmind database sha256 verification passed")
 		m.mmLastHash = expectedHash
 	}
 
