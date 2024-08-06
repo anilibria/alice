@@ -12,13 +12,14 @@ import (
 )
 
 type GeoIPFileClient struct {
+	mu sync.RWMutex
 	*maxminddb.Reader
 
 	appname, tempdir string
 	skipVerify       bool
 
-	mu      sync.RWMutex
-	isReady bool
+	muReady sync.RWMutex
+	ready   bool
 
 	log *zerolog.Logger
 
@@ -64,13 +65,14 @@ func (m *GeoIPFileClient) Bootstrap() {
 }
 
 func (m *GeoIPFileClient) LookupCountryISO(ip string) (string, error) {
-	return lookupISOByIP(m.Reader, ip)
+	return lookupISOByIP(&m.mu, m.Reader, ip)
 }
 
 func (m *GeoIPFileClient) IsReady() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.isReady
+	m.muReady.RLock()
+	defer m.muReady.RUnlock()
+
+	return m.ready
 }
 
 //
@@ -82,7 +84,8 @@ func (m *GeoIPFileClient) destroy() {
 }
 
 func (m *GeoIPFileClient) setReady(ready bool) {
-	m.mu.Lock()
-	m.isReady = ready
-	m.mu.Unlock()
+	m.muReady.Lock()
+	defer m.muReady.Unlock()
+
+	m.ready = ready
 }

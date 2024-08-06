@@ -11,7 +11,7 @@ require (
 	github.com/mailru/easyjson v0.7.7
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/rs/zerolog v1.33.0
-	github.com/urfave/cli/v2 v2.27.2
+	github.com/urfave/cli/v2 v2.27.3
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.55.0
 )
@@ -30,7 +30,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
+	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.3.9 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 )

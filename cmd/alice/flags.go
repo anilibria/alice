@@ -260,9 +260,26 @@ func flagsInitialization() []cli.Flag {
 		&cli.BoolFlag{
 			Name:     "geoip-download-sha256-skip",
 			Category: "GeoIP",
+			Usage: `sha256 helps to check database contents of the mmdb database
+			and avoid unnecessary requests to MaxMind CDN`,
+		},
+		&cli.DurationFlag{
+			Name:     "geoip-update-frequency",
+			Category: "GeoIP",
+			Usage: `when geoip-maxmind-permalink is selected and geoip-db-path is empty,
+			once within a certain 'PERIOD' of time app will update the geoip database;
+			do not forget about maxmind donwload limits; set to 0s if want to disable`,
+			Value: 24 * time.Hour,
+		},
+		&cli.DurationFlag{
+			Name:     "geoip-update-retry-frequency",
+			Category: "GeoIP",
+			Value:    1 * time.Hour,
 		},
 		&cli.BoolFlag{
 			Name:               "geoip-skip-database-verify",
+			Category:           "GeoIP",
+			Usage:              "skip mmdb contents validation by vendor function db.Verify()",
 			DisableDefaultText: true,
 		},
 
