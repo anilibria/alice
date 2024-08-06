@@ -97,7 +97,7 @@ func (m *Cache) ApiStats() io.Reader {
 
 	tb.SetOutputMirror(buf)
 	tb.AppendHeader(table.Row{
-		"zone", "number of entries", "capacity (mb)", "hits", "misses", "delhits", "delmisses", "collisions",
+		"zone", "number of entries", "capacity (mb)", "hits", "misses", "delhits", "delmisses", "collisions", "misses %",
 	})
 
 	for zone, cache := range m.pools {
@@ -110,10 +110,15 @@ func (m *Cache) ApiStats() io.Reader {
 			cache.Stats().DelHits,
 			cache.Stats().DelMisses,
 			cache.Stats().Collisions,
+			round(float64(cache.Stats().Misses*100/cache.Stats().Hits), 2),
 		})
 	}
 
 	tb.Style().Options.SeparateRows = true
+
+	tb.SortBy([]table.SortBy{
+		{Number: 0, Mode: table.Asc},
+	})
 
 	return buf
 }
