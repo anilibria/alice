@@ -38,6 +38,11 @@ func NewProxy(c context.Context) *Proxy {
 		randomizer = c.Value(utils.CKRandomizer).(*anilibria.Randomizer)
 	}
 
+	var gip geoip.GeoIPClient
+	if c.Value(utils.CKGeoIP) != nil {
+		gip = c.Value(utils.CKGeoIP).(geoip.GeoIPClient)
+	}
+
 	return &Proxy{
 		client: NewClient(cli),
 		config: &ProxyConfig{
@@ -46,9 +51,10 @@ func NewProxy(c context.Context) *Proxy {
 			apiSecret: []byte(cli.String("cache-api-secret")),
 		},
 
-		cache:      c.Value(utils.CKCache).(*cache.Cache),
-		geoip:      c.Value(utils.CKGeoIP).(geoip.GeoIPClient),
+		geoip:      gip,
 		randomizer: randomizer,
+
+		cache: c.Value(utils.CKCache).(*cache.Cache),
 	}
 }
 
