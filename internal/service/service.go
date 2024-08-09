@@ -183,7 +183,9 @@ func (m *Service) Bootstrap() (e error) {
 	gofunc(&wg, m.cache.Bootstrap)
 
 	// randomizer module
-	anilibria.New(gCtx)
+	if gCli.Bool("randomizer-enable") {
+		anilibria.New(gCtx)
+	}
 
 	// geoip module
 	if gCli.Bool("geoip-enable") {
@@ -232,6 +234,8 @@ func (m *Service) Bootstrap() (e error) {
 	go m.loop(echan, wg.Done)
 
 	gLog.Info().Msg("ready...")
+
+	time.Sleep(time.Second)
 
 	wg.Wait()
 	return m.loopError
