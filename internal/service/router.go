@@ -76,7 +76,9 @@ func (m *Service) fiberMiddlewareInitialization() {
 			return zc.Uint64("id", c.Context().ID())
 		})
 
-		c.Locals("logger", logger)
+		logger2 := logger.Hook(UDPSizeDiscardHook{})
+
+		c.Locals("logger", &logger2)
 		e = c.Next()
 
 		loggerPool.Put(logger)
@@ -183,4 +185,17 @@ func (m *Service) fiberRouterInitialization() {
 
 	// step3 - proxy request to upstream
 	apiv1.Use(m.proxy.HandleProxyToDst)
+}
+
+type UDPSizeDiscardHook struct{}
+
+func (UDPSizeDiscardHook) Run(e *zerolog.Event, level zerolog.Level, message string) {
+	fmt.Println(len(message))
+	if len(message) <= utils.MAX_UDP_MSG_BYTES {
+		return
+	}
+
+	level = zerolog.ErrorLevel
+	e.Msgf("message was dropped because of high length %d\n%s", len(message), message)
+	e.Discard()
 }
