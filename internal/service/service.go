@@ -235,8 +235,6 @@ func (m *Service) Bootstrap() (e error) {
 
 	gLog.Info().Msg("ready...")
 
-	time.Sleep(time.Second)
-
 	wg.Wait()
 	return m.loopError
 }
