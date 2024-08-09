@@ -130,8 +130,6 @@ func (m *Syslog5424) write(b []byte) (_ int, e error) {
 		return
 	}
 
-	
-
 	fmt.Fprint(m.conn, res)
 	return len(b), e
 }
