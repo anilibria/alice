@@ -31,6 +31,11 @@ type ProxyConfig struct {
 func NewProxy(c context.Context) *Proxy {
 	cli := c.Value(utils.CKCliCtx).(*cli.Context)
 
+	var gip geoip.GeoIPClient
+	if c.Value(utils.CKGeoIP) != nil {
+		gip = c.Value(utils.CKGeoIP).(geoip.GeoIPClient)
+	}
+
 	return &Proxy{
 		client: NewClient(cli),
 		config: &ProxyConfig{
@@ -40,7 +45,7 @@ func NewProxy(c context.Context) *Proxy {
 		},
 
 		cache: c.Value(utils.CKCache).(*cache.Cache),
-		geoip: c.Value(utils.CKGeoIP).(geoip.GeoIPClient),
+		geoip: gip,
 	}
 }
 
