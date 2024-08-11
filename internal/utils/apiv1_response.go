@@ -87,7 +87,7 @@ func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
 	return
 }
 
-func RespondWithRandomRelease(status int, code string, w io.Writer) (e error) {
+func RespondWithRandomRelease(code string, w io.Writer) (e error) {
 	apirsp := AcquireApiResponse()
 	defer ReleaseApiResponse(apirsp)
 

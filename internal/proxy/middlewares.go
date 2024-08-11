@@ -18,7 +18,7 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 	if v.IsQueryEqual([]byte("random_release")) {
 		if m.randomizer != nil {
 			if release := m.randomizer.Randomize(); release != "" {
-				if e = utils.RespondWithRandomRelease(fiber.StatusOK, release, c); e == nil {
+				if e = utils.RespondWithRandomRelease(release, c); e == nil {
 					return respondPlainWithStatus(c, fiber.StatusOK)
 				}
 				rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
