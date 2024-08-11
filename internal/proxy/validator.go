@@ -43,6 +43,7 @@ func AcquireValidator(c *fiber.Ctx, ctr []byte) (v *Validator) {
 }
 
 func ReleaseValidator(v *Validator) {
+	fasthttp.ReleaseArgs(v.requestArgs)
 	v.Reset()
 	validatorPool.Put(v)
 }
@@ -60,7 +61,6 @@ func (m *Validator) ValidateRequest() (e error) {
 	m.validateCustomHeaders()
 
 	m.requestArgs = fasthttp.AcquireArgs()
-	defer fasthttp.ReleaseArgs(m.requestArgs)
 
 	if e = m.extractRequestKey(); e != nil {
 		return
@@ -80,6 +80,10 @@ func (m *Validator) ValidateRequest() (e error) {
 
 	m.Context().SetUserValue(utils.UVCacheKey, m.cacheKey)
 	return
+}
+
+func (m *Validator) IsQueryEqual(equal []byte) bool {
+	return m.queryLookup(equal)
 }
 
 func (m *Validator) Reset() {
@@ -116,7 +120,6 @@ func (m *Validator) validateContentType() utils.RequestContentType {
 }
 
 func (m *Validator) validateCustomHeaders() {
-
 	for header, ch := range Stoch {
 		val := m.Request().Header.PeekBytes(futils.UnsafeBytes(header))
 		if len(val) != 0 {
@@ -239,7 +242,7 @@ func (m *Validator) isArgsWhitelisted() (_ bool) {
 	declinedKeysPtr := declinedKeysPool.Get().(*[]string)
 	declinedKeys := *declinedKeysPtr
 
-	m.requestArgs.VisitAll(func(key, value []byte) {
+	m.requestArgs.VisitAll(func(key, _ []byte) {
 		if _, ok := postArgsWhitelist[futils.UnsafeString(key)]; !ok {
 			declinedKeys = append(declinedKeys, futils.UnsafeString(key))
 		}
@@ -274,4 +277,13 @@ func (m *Validator) isQueryWhitelisted() (ok bool) {
 	}
 
 	return
+}
+
+func (m *Validator) queryLookup(equal []byte) (_ bool) {
+	var query []byte
+	if query = m.requestArgs.PeekBytes([]byte("query")); len(query) == 0 {
+		return
+	}
+
+	return bytes.Equal(query, equal)
 }

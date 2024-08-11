@@ -173,6 +173,12 @@ func (m *Service) fiberRouterInitialization() {
 	cacheapi.Post("/purgeall", m.proxy.HandleCachePurgeAll)
 
 	//
+	// ALICE randomizer method for legacy www
+	if m.randomizer != nil {
+		m.fb.Post("/public/random.php", m.proxy.HandleRandomRelease)
+	}
+
+	//
 	// ALICE apiv1 requests proxying lifecycle:
 
 	// step1 - validate request

@@ -37,6 +37,7 @@ func flagsInitialization() []cli.Flag {
 			Category: "Syslog settings",
 			Usage:    "optional setting; more information in syslog RFC",
 			Value:    "",
+			Hidden:   true,
 		},
 
 		// fiber-server settings
@@ -63,6 +64,7 @@ func flagsInitialization() []cli.Flag {
 			if enabled, the application will need to be ran
 			through a shell because prefork mode sets environment variables;
 			EXPERIMENTAL! USE CAREFULLY!`,
+			Hidden:             true,
 			DisableDefaultText: true,
 		},
 		&cli.DurationFlag{
@@ -103,28 +105,33 @@ func flagsInitialization() []cli.Flag {
 		&cli.BoolFlag{
 			Name:               "limiter-enable",
 			Category:           "Limiter settings",
+			Hidden:             true,
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
 			Name:               "limiter-use-bbolt",
 			Category:           "Limiter settings",
 			Usage:              "use bbolt key\value file database instead of memory database",
+			Hidden:             true,
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
 			Name:               "limiter-bbolt-reset",
 			Category:           "Limiter settings",
 			Usage:              "if bbolt used as storage, reset all limited IPs on startup",
+			Hidden:             true,
 			DisableDefaultText: true,
 		},
 		&cli.IntFlag{
 			Name:     "limiter-max-req",
 			Category: "Limiter settings",
+			Hidden:   true,
 			Value:    200,
 		},
 		&cli.DurationFlag{
 			Name:     "limiter-records-duration",
 			Category: "Limiter settings",
+			Hidden:   true,
 			Value:    5 * time.Minute,
 		},
 
@@ -262,6 +269,7 @@ func flagsInitialization() []cli.Flag {
 			Category: "GeoIP",
 			Usage: `sha256 helps to check database contents of the mmdb database
 			and avoid unnecessary requests to MaxMind CDN`,
+			DisableDefaultText: true,
 		},
 		&cli.DurationFlag{
 			Name:     "geoip-update-frequency",
@@ -283,11 +291,77 @@ func flagsInitialization() []cli.Flag {
 			DisableDefaultText: true,
 		},
 
+		// anilibria release randomizer
+		&cli.BoolFlag{
+			Name:     "randomizer-enable",
+			Category: "Release randomizer",
+			Usage: `alice has its own function for randomizing releases; it optimizes random_release (apiv1)
+			and public/random.php (www site), ensuring the high performance of these methods;
+			if disabled, all reuqests will be cached in shared cache pool with another methods`,
+		},
+		&cli.StringFlag{
+			Name:     "randomizer-redis-host",
+			Category: "Release randomizer",
+			Value:    "127.0.0.1:6279",
+		},
+		&cli.StringFlag{
+			Name:     "randomizer-redis-password",
+			Category: "Release randomizer",
+			Value:    "",
+		},
+		&cli.IntFlag{
+			Name:     "randomizer-redis-database",
+			Category: "Release randomizer",
+			Value:    0,
+		},
+		&cli.StringFlag{
+			Name:     "randomizer-releaseskey",
+			Category: "Release randomizer",
+			Usage:    "the feature of the legacy",
+			Value:    "apiInfo",
+		},
+		&cli.DurationFlag{
+			Name:     "randomizer-update-frequency",
+			Category: "Release randomizer",
+			Value:    1 * time.Minute,
+		},
+		&cli.DurationFlag{
+			Name:     "randomizer-update-frequency-onerror",
+			Category: "Release randomizer",
+			Value:    1 * time.Minute,
+			Hidden:   true,
+		},
+		&cli.IntFlag{
+			Name:     "redis-client-maxretries",
+			Category: "Release randomizer",
+			Hidden:   true,
+			Value:    3,
+		},
+		&cli.DurationFlag{
+			Name:     "redis-client-dialtimeout",
+			Category: "Release randomizer",
+			Hidden:   true,
+			Value:    5 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:     "redis-client-readtimeout",
+			Category: "Release randomizer",
+			Hidden:   true,
+			Value:    3 * time.Second,
+		},
+		&cli.DurationFlag{
+			Name:     "redis-client-writetimeout",
+			Category: "Release randomizer",
+			Hidden:   true,
+			Value:    3 * time.Second,
+		},
+
 		// custom settings
 		&cli.BoolFlag{
 			Name:               "anilibrix-cmpb-mode",
 			Category:           "Feature flags",
 			Usage:              "avoiding 'Cannot POST //public/api/index.php' errors with req rewrite",
+			Hidden:             true,
 			DisableDefaultText: true,
 		},
 	}

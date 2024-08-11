@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anilibria/alice/internal/anilibria"
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/geoip"
 	"github.com/anilibria/alice/internal/proxy"
@@ -37,9 +38,10 @@ type Service struct {
 	fb     *fiber.App
 	fbstor fiber.Storage
 
-	proxy *proxy.Proxy
-	cache *cache.Cache
-	geoip geoip.GeoIPClient
+	proxy      *proxy.Proxy
+	cache      *cache.Cache
+	geoip      geoip.GeoIPClient
+	randomizer *anilibria.Randomizer
 
 	syslogWriter io.Writer
 
@@ -180,6 +182,14 @@ func (m *Service) Bootstrap() (e error) {
 	}
 	gCtx = context.WithValue(gCtx, utils.CKCache, m.cache)
 	gofunc(&wg, m.cache.Bootstrap)
+
+	// randomizer module
+	if gCli.Bool("randomizer-enable") {
+		m.randomizer = anilibria.New(gCtx)
+		gCtx = context.WithValue(gCtx, utils.CKRandomizer, m.randomizer)
+
+		gofunc(&wg, m.randomizer.Bootstrap)
+	}
 
 	// geoip module
 	if gCli.Bool("geoip-enable") {

@@ -10,6 +10,7 @@ require (
 	github.com/klauspost/compress v1.17.9
 	github.com/mailru/easyjson v0.7.7
 	github.com/oschwald/maxminddb-golang v1.13.1
+	github.com/redis/go-redis/v9 v9.6.1
 	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli/v2 v2.27.3
 	github.com/valyala/bytebufferpool v1.0.0
@@ -18,7 +19,9 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gofiber/utils/v2 v2.0.0-beta.3 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
