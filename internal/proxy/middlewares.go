@@ -26,8 +26,6 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 		}
 	}
 
-	// {"status":true,"data":{"code":"nande-koko-ni-sensei-ga"},"error":null}
-
 	// continue request processing
 	e = c.Next()
 	return
