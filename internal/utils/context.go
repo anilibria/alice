@@ -8,4 +8,5 @@ const (
 	CKAbortFunc
 	CKCache
 	CKGeoIP
+	CKRandomizer
 )

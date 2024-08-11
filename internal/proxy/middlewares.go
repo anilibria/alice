@@ -3,15 +3,27 @@ package proxy
 import (
 	"bytes"
 
+	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
 )
 
-func (*Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
+func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 	v := AcquireValidator(c, c.Request().Header.ContentType())
 	defer ReleaseValidator(v)
 
 	if e = v.ValidateRequest(); e != nil {
 		return fiber.NewError(fiber.StatusBadRequest, e.Error())
+	}
+
+	if v.IsQueryEqual([]byte("random_release")) {
+		if m.randomizer != nil {
+			if release := m.randomizer.Randomize(); release != "" {
+				if e = utils.RespondWithRandomRelease(release, c); e == nil {
+					return respondPlainWithStatus(c, fiber.StatusOK)
+				}
+				rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
+			}
+		}
 	}
 
 	// continue request processing
