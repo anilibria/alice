@@ -120,7 +120,7 @@ LOOP:
 
 func (m *Randomizer) destroy() {
 	if e := m.rclient.Close(); e != nil {
-		m.log.Error().Msg("coudl not properly close http client - " + e.Error())
+		m.log.Error().Msg("could not properly close http client - " + e.Error())
 	}
 }
 
@@ -162,7 +162,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 		return
 	}
 	m.log.Trace().Msgf("release key says about %d chunks", chunks)
-	m.log.Info().Msgf("release parsing from redis with %d chunks started", chunks)
+	m.log.Info().Msgf("staring release parsing from redis with %d chunks", chunks)
 
 	// avoid mass allocs
 	started := time.Now()

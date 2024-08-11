@@ -41,7 +41,7 @@ func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
 	}
 
 	var release string
-	if release := m.randomizer.Randomize(); release == "" {
+	if release = m.randomizer.Randomize(); release == "" {
 		return fiber.NewError(fiber.StatusServiceUnavailable,
 			"an error occured in randomizer, maybe it's not ready yet")
 	}

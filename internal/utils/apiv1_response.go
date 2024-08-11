@@ -64,14 +64,19 @@ func ReleaseApiResponse(ar *ApiResponse) {
 	if ar.Error != nil {
 		ar.Error.Code, ar.Error.Message, ar.Error.Description = 0, "", ""
 	}
+	if ar.Data != nil {
+		ar.Data.Code = ""
+	}
 	apiResponsePool.Put(ar)
 }
 
 func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
 	apirsp := AcquireApiResponse()
+	defer ReleaseApiResponse(apirsp)
+
 	apirsp.Error.Code, apirsp.Error.Message, apirsp.Error.Description =
 		status, msg, desc
-	defer ReleaseApiResponse(apirsp)
+	apirsp.Data = nil
 
 	var buf []byte
 	if buf, e = easyjson.Marshal(apirsp); e != nil {
