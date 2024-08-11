@@ -23,7 +23,6 @@ type Validator struct {
 
 	requestArgs *fasthttp.Args
 
-	query    []byte
 	cacheKey *Key
 
 	customs CustomHeaders

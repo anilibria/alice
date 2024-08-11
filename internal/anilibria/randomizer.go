@@ -30,7 +30,6 @@ type Randomizer struct {
 	relUpdFreqErr time.Duration
 
 	mu       sync.RWMutex
-	ready    bool
 	releases []string
 }
 
