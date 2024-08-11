@@ -170,14 +170,12 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 	res, errs, total, banned := "", []string{}, 0, 0
 
 	for i := 0; i < chunks; i++ {
-		m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
-
 		select {
 		case <-m.done():
 			e = errors.New("chunk parsing has been interrupted by global abort()")
 			return
 		default:
-			break
+			m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
 		}
 
 		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
