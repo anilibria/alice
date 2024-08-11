@@ -124,6 +124,8 @@ LOOP:
 	for {
 		select {
 		case <-update.C:
+			update.Stop()
+
 			if !m.muUpdate.TryLock() {
 				m.log.Error().Msg("could not start the mmdb update, last proccess is not marked as complete")
 				update.Reset(m.mmRetryFreq)
@@ -142,6 +144,7 @@ LOOP:
 			newfd, newrd, e := m.databaseDownload()
 			if e != nil && newfd != nil && newrd != nil { // update is not required
 				m.log.Info().Msg(e.Error())
+				update.Reset(m.mmUpdateFreq)
 				m.muUpdate.Unlock()
 				continue
 			} else if e != nil {
@@ -162,6 +165,7 @@ LOOP:
 				m.Verify()
 			}
 
+			update.Reset(m.mmUpdateFreq)
 			m.muUpdate.Unlock()
 		case <-m.done():
 			m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
