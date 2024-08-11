@@ -179,7 +179,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 		}
 
 		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
-			e = errors.New(fmt.Sprintf("given chunk number %d is not exists", i))
+			e = fmt.Errorf("given chunk number %d is not exists", i)
 			m.log.Warn().Msg(e.Error())
 			errs = append(errs, e.Error())
 			continue
