@@ -86,12 +86,13 @@ func (m *Randomizer) loop() {
 	defer m.log.Debug().Msg("randomizer release update loop has been closed")
 
 	// initial parsing
-	var e error
-	if m.releases, e = m.lookupReleases(); e != nil {
+	releases, e := m.lookupReleases()
+	if e != nil {
 		m.log.Error().Msg(e.Error())
 		m.abort()
 		return
 	}
+	m.rotateReleases(releases)
 
 	update := time.NewTimer(m.relUpdFreq)
 
