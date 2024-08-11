@@ -82,6 +82,10 @@ func (m *Validator) ValidateRequest() (e error) {
 	return
 }
 
+func (m *Validator) IsQueryEqual(equal []byte) bool {
+	return m.isQueryEqual(equal)
+}
+
 func (m *Validator) Reset() {
 	m.Context().RemoveUserValue(utils.UVCacheKey)
 	ReleaseKey(m.cacheKey)
@@ -116,7 +120,6 @@ func (m *Validator) validateContentType() utils.RequestContentType {
 }
 
 func (m *Validator) validateCustomHeaders() {
-
 	for header, ch := range Stoch {
 		val := m.Request().Header.PeekBytes(futils.UnsafeBytes(header))
 		if len(val) != 0 {
@@ -274,4 +277,13 @@ func (m *Validator) isQueryWhitelisted() (ok bool) {
 	}
 
 	return
+}
+
+func (m *Validator) isQueryEqual(equal []byte) (_ bool) {
+	var query []byte
+	if query = m.requestArgs.PeekBytes([]byte("query")); len(query) == 0 {
+		return
+	}
+
+	return bytes.Equal(query, equal)
 }

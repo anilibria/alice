@@ -2,16 +2,26 @@ package proxy
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func (*Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
+func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 	v := AcquireValidator(c, c.Request().Header.ContentType())
 	defer ReleaseValidator(v)
 
 	if e = v.ValidateRequest(); e != nil {
 		return fiber.NewError(fiber.StatusBadRequest, e.Error())
+	}
+
+	if v.IsQueryEqual([]byte("random_release")) {
+		if m.randomizer != nil && m.randomizer.IsReady() {
+			if release := m.randomizer.Randomize(); release != "" {
+				fmt.Fprintln(c, release)
+				return respondPlainWithStatus(c, fiber.StatusOK)
+			}
+		}
 	}
 
 	// continue request processing

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"sync"
 	"time"
@@ -17,29 +18,28 @@ import (
 )
 
 type Randomizer struct {
+	log  *zerolog.Logger
+	done func() <-chan struct{}
+
 	rctx    context.Context
 	rclient *redis.Client
 
 	releasesKey string
-
-	log  *zerolog.Logger
-	done func() <-chan struct{}
+	relUpdFreq  time.Duration
 
 	mu       sync.RWMutex
 	ready    bool
 	releases []string
 }
 
-func New(c context.Context) (_ *Randomizer) {
+func New(c context.Context) (_ *Randomizer, e error) {
 	cli, log :=
 		c.Value(utils.CKCliCtx).(*cli.Context),
 		c.Value(utils.CKLogger).(*zerolog.Logger)
 
 	r := &Randomizer{}
-
 	r.log, r.done = log, c.Done
 
-	r.rctx = context.Background()
 	r.rclient = redis.NewClient(&redis.Options{
 		Addr:     cli.String("randomizer-redis-host"),
 		Password: cli.String("randomizer-redis-password"),
@@ -53,39 +53,75 @@ func New(c context.Context) (_ *Randomizer) {
 		WriteTimeout: cli.Duration("redis-client-writetimeout"),
 	})
 
-	r.releasesKey = cli.String("randomizer-releaseskey")
-	r.releases = make([]string, 0)
+	r.rctx = context.Background()
+	r.releases, r.releasesKey = make([]string, 0), cli.String("randomizer-releaseskey")
 
-	//
-	//
-	if _, e := r.lookupReleases(); e != nil {
+	if r.releases, e = r.lookupReleases(); e != nil {
 		r.log.Error().Msg(e.Error())
-		r.done()
+		return
 	}
-	//
-	//
+	r.setReady(true)
 
-	return r
+	return r, e
 }
 
-func (m *Randomizer) Bootstrap() (e error) {
-	// add ping
-	// add timer
-	return m.destroy()
+func (m *Randomizer) Bootstrap() {
+	m.loop()
+	m.destroy()
 }
 
-func (*Randomizer) IsReady() bool {
-	return false
+func (m *Randomizer) IsReady() bool {
+	return m.isReady()
+}
+
+func (m *Randomizer) Randomize() string {
+	return m.randomRelease()
 }
 
 //
 
-func (*Randomizer) loop() {
+func (m *Randomizer) loop() {
+	m.log.Debug().Msg("initiate randomizer release update loop...")
+	defer m.log.Debug().Msg("randomizer release update loop has been closed")
 
+	update := time.NewTimer(m.relUpdFreq)
+
+LOOP:
+	for {
+		select {
+		case <-m.done():
+			m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
+			break LOOP
+		case <-update.C:
+			releases, e := m.lookupReleases()
+			if e != nil {
+				m.log.Error().Msg("could not updated releases for randomizer - " + e.Error())
+				continue
+			}
+
+			m.rotateReleases(releases)
+		}
+	}
 }
 
-func (m *Randomizer) destroy() error {
-	return m.rclient.Close()
+func (m *Randomizer) destroy() {
+	if e := m.rclient.Close(); e != nil {
+		m.log.Error().Msg("coudl not properly close http client - " + e.Error())
+	}
+}
+
+func (m *Randomizer) setReady(ready bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.ready = ready
+}
+
+func (m *Randomizer) isReady() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.ready
 }
 
 func (m *Randomizer) peekReleaseKeyChunks() (_ int, e error) {
@@ -168,4 +204,34 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 	m.log.Info().Msgf("in %s from %d (of %d) chunks added %d releases and %d skipped because of WW ban",
 		time.Since(started).String(), chunks-len(errs), chunks, total, banned)
 	return releases, nil
+}
+
+func (m *Randomizer) rotateReleases(releases []string) {
+	m.setReady(false)
+	m.mu.Lock()
+
+	defer m.setReady(true)
+	defer m.mu.Unlock()
+
+	m.log.Debug().Msgf("update current %d releases with slice of %d releases",
+		len(m.releases), len(releases))
+	m.releases = releases
+}
+
+func (m *Randomizer) randomRelease() (_ string) {
+	if !m.isReady() {
+		m.log.Warn().Msg("randomizer is not ready yet")
+		return
+	}
+
+	if !m.mu.TryRLock() {
+		m.log.Warn().Msg("could not get randomized release, read lock is not available")
+		return
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	r := rand.Intn(len(m.releases))
+	return m.releases[r]
 }

@@ -35,6 +35,24 @@ func (m *Proxy) HandleProxyToDst(c *fiber.Ctx) (e error) {
 	return
 }
 
+func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
+	if m.randomizer == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "BUG! randomizer is not initialized")
+	}
+
+	if !m.randomizer.IsReady() {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "randomizer is not ready yet")
+	}
+
+	var release string
+	if release := m.randomizer.Randomize(); release == "" {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "an error occured in randomizer")
+	}
+
+	fmt.Fprintln(c, release)
+	return respondPlainWithStatus(c, fiber.StatusOK)
+}
+
 // internal api handlers
 
 func respondPlainWithStatus(c *fiber.Ctx, status int) error {

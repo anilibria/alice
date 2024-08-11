@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anilibria/alice/internal/anilibria"
 	"github.com/anilibria/alice/internal/cache"
 	"github.com/anilibria/alice/internal/geoip"
 	"github.com/anilibria/alice/internal/utils"
@@ -19,8 +20,9 @@ type Proxy struct {
 	client *ProxyClient
 	config *ProxyConfig
 
-	cache *cache.Cache
-	geoip geoip.GeoIPClient
+	cache      *cache.Cache
+	geoip      geoip.GeoIPClient
+	randomizer *anilibria.Randomizer
 }
 
 type ProxyConfig struct {
@@ -31,6 +33,11 @@ type ProxyConfig struct {
 func NewProxy(c context.Context) *Proxy {
 	cli := c.Value(utils.CKCliCtx).(*cli.Context)
 
+	var randomizer *anilibria.Randomizer
+	if c.Value(utils.CKRandomizer) != nil {
+		randomizer = c.Value(utils.CKRandomizer).(*anilibria.Randomizer)
+	}
+
 	return &Proxy{
 		client: NewClient(cli),
 		config: &ProxyConfig{
@@ -39,8 +46,9 @@ func NewProxy(c context.Context) *Proxy {
 			apiSecret: []byte(cli.String("cache-api-secret")),
 		},
 
-		cache: c.Value(utils.CKCache).(*cache.Cache),
-		geoip: c.Value(utils.CKGeoIP).(geoip.GeoIPClient),
+		cache:      c.Value(utils.CKCache).(*cache.Cache),
+		geoip:      c.Value(utils.CKGeoIP).(geoip.GeoIPClient),
+		randomizer: randomizer,
 	}
 }
 

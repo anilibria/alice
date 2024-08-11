@@ -38,9 +38,10 @@ type Service struct {
 	fb     *fiber.App
 	fbstor fiber.Storage
 
-	proxy *proxy.Proxy
-	cache *cache.Cache
-	geoip geoip.GeoIPClient
+	proxy      *proxy.Proxy
+	cache      *cache.Cache
+	geoip      geoip.GeoIPClient
+	randomizer *anilibria.Randomizer
 
 	syslogWriter io.Writer
 
@@ -184,7 +185,12 @@ func (m *Service) Bootstrap() (e error) {
 
 	// randomizer module
 	if gCli.Bool("randomizer-enable") {
-		anilibria.New(gCtx)
+		if m.randomizer, e = anilibria.New(gCtx); e != nil {
+			return
+		}
+
+		gCtx = context.WithValue(gCtx, utils.CKRandomizer, m.randomizer)
+		gofunc(&wg, m.randomizer.Bootstrap)
 	}
 
 	// geoip module
