@@ -185,11 +185,9 @@ func (m *Service) Bootstrap() (e error) {
 
 	// randomizer module
 	if gCli.Bool("randomizer-enable") {
-		if m.randomizer, e = anilibria.New(gCtx); e != nil {
-			return
-		}
-
+		m.randomizer = anilibria.New(gCtx)
 		gCtx = context.WithValue(gCtx, utils.CKRandomizer, m.randomizer)
+
 		gofunc(&wg, m.randomizer.Bootstrap)
 	}
 

@@ -18,51 +18,52 @@ import (
 )
 
 type Randomizer struct {
-	log  *zerolog.Logger
-	done func() <-chan struct{}
+	log   *zerolog.Logger
+	done  func() <-chan struct{}
+	abort context.CancelFunc
 
 	rctx    context.Context
 	rclient *redis.Client
 
-	releasesKey string
-	relUpdFreq  time.Duration
+	releasesKey   string
+	relUpdFreq    time.Duration
+	relUpdFreqErr time.Duration
 
 	mu       sync.RWMutex
 	ready    bool
 	releases []string
 }
 
-func New(c context.Context) (_ *Randomizer, e error) {
-	cli, log :=
-		c.Value(utils.CKCliCtx).(*cli.Context),
-		c.Value(utils.CKLogger).(*zerolog.Logger)
+func New(c context.Context) *Randomizer {
+	cli := c.Value(utils.CKCliCtx).(*cli.Context)
 
-	r := &Randomizer{}
-	r.log, r.done = log, c.Done
+	r := &Randomizer{
+		done:  c.Done,
+		log:   c.Value(utils.CKLogger).(*zerolog.Logger),
+		abort: c.Value(utils.CKAbortFunc).(context.CancelFunc),
 
-	r.rclient = redis.NewClient(&redis.Options{
-		Addr:     cli.String("randomizer-redis-host"),
-		Password: cli.String("randomizer-redis-password"),
-		DB:       cli.Int("randomizer-redis-database"),
+		rctx: context.Background(),
+		rclient: redis.NewClient(&redis.Options{
+			Addr:     cli.String("randomizer-redis-host"),
+			Password: cli.String("randomizer-redis-password"),
+			DB:       cli.Int("randomizer-redis-database"),
 
-		ClientName: fmt.Sprintf("%s/%s", cli.App.Name, cli.App.Version),
+			ClientName: fmt.Sprintf("%s/%s", cli.App.Name, cli.App.Version),
 
-		MaxRetries:   cli.Int("redis-client-maxretries"),
-		DialTimeout:  cli.Duration("redis-client-dialtimeout"),
-		ReadTimeout:  cli.Duration("redis-client-readtimeout"),
-		WriteTimeout: cli.Duration("redis-client-writetimeout"),
-	})
+			MaxRetries:   cli.Int("redis-client-maxretries"),
+			DialTimeout:  cli.Duration("redis-client-dialtimeout"),
+			ReadTimeout:  cli.Duration("redis-client-readtimeout"),
+			WriteTimeout: cli.Duration("redis-client-writetimeout"),
+		}),
 
-	r.rctx = context.Background()
-	r.releases, r.releasesKey = make([]string, 0), cli.String("randomizer-releaseskey")
+		relUpdFreq:    cli.Duration("randomizer-update-frequency"),
+		relUpdFreqErr: cli.Duration("randomizer-update-frequency-onerror"),
 
-	if r.releases, e = r.lookupReleases(); e != nil {
-		r.log.Error().Msg(e.Error())
-		return
+		releases:    make([]string, 0),
+		releasesKey: cli.String("randomizer-releaseskey"),
 	}
-	r.setReady(true)
 
-	return r, e
+	return r
 }
 
 func (m *Randomizer) Bootstrap() {
@@ -84,6 +85,15 @@ func (m *Randomizer) loop() {
 	m.log.Debug().Msg("initiate randomizer release update loop...")
 	defer m.log.Debug().Msg("randomizer release update loop has been closed")
 
+	// initial parsing
+	var e error
+	if m.releases, e = m.lookupReleases(); e != nil {
+		m.log.Error().Msg(e.Error())
+		m.abort()
+		return
+	}
+	m.setReady(true)
+
 	update := time.NewTimer(m.relUpdFreq)
 
 LOOP:
@@ -93,13 +103,17 @@ LOOP:
 			m.log.Info().Msg("internal abort() has been caught; initiate application closing...")
 			break LOOP
 		case <-update.C:
-			releases, e := m.lookupReleases()
-			if e != nil {
+			update.Stop()
+
+			var releases []string
+			if releases, e = m.lookupReleases(); e != nil {
 				m.log.Error().Msg("could not updated releases for randomizer - " + e.Error())
+				update.Reset(m.relUpdFreqErr)
 				continue
 			}
 
 			m.rotateReleases(releases)
+			update.Reset(m.relUpdFreq)
 		}
 	}
 }
@@ -148,14 +162,23 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 		return
 	}
 	m.log.Trace().Msgf("release key says about %d chunks", chunks)
+	m.log.Info().Msgf("release parsing from redis with %d chunks started", chunks)
 
 	// avoid mass allocs
 	started := time.Now()
-	releases := make([]string, len(m.releases))
+	releases := make([]string, 0, len(m.releases))
 	res, errs, total, banned := "", []string{}, 0, 0
 
 	for i := 0; i < chunks; i++ {
 		m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
+
+		select {
+		case <-m.done():
+			e = errors.New("chunk parsing has been interrupted by global abort()")
+			return
+		default:
+			break
+		}
 
 		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
 			e = errors.New(fmt.Sprintf("given chunk number %d is not exists", i))

@@ -302,7 +302,13 @@ func flagsInitialization() []cli.Flag {
 		&cli.DurationFlag{
 			Name:     "randomizer-update-frequency",
 			Category: "Release randomizer",
-			Value:    3 * time.Minute,
+			Value:    1 * time.Minute,
+		},
+		&cli.DurationFlag{
+			Name:     "randomizer-update-frequency-onerror",
+			Category: "Release randomizer",
+			Value:    1 * time.Minute,
+			Hidden:   true,
 		},
 		&cli.IntFlag{
 			Name:     "redis-client-maxretries",
