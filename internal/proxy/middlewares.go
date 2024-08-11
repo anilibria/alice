@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -17,19 +16,14 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 	}
 
 	if v.IsQueryEqual([]byte("random_release")) {
-		fmt.Println("this is random_release")
 		if m.randomizer != nil {
 			if release := m.randomizer.Randomize(); release != "" {
-				fmt.Fprintln(c, release)
-				fmt.Println("all good - ", release)
 				if e = utils.RespondWithRandomRelease(fiber.StatusOK, release, c); e == nil {
 					return respondPlainWithStatus(c, fiber.StatusOK)
 				}
 				rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
 			}
-			fmt.Println("randomizer empty result")
 		}
-		fmt.Println("randomizer falls")
 	}
 
 	// {"status":true,"data":{"code":"nande-koko-ni-sensei-ga"},"error":null}
