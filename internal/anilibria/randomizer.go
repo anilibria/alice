@@ -251,6 +251,6 @@ func (m *Randomizer) randomRelease() (_ string) {
 		return
 	}
 
-	r := rand.Intn(len(m.releases))
+	r := rand.Intn(len(m.releases)) // skipcq: GSC-G404 math/rand is enoght here
 	return m.releases[r]
 }
