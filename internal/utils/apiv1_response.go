@@ -60,12 +60,9 @@ func AcquireApiResponse() *ApiResponse {
 }
 
 func ReleaseApiResponse(ar *ApiResponse) {
-	ar.Status = false
-	if ar.Error != nil {
-		ar.Error.Code, ar.Error.Message, ar.Error.Description = 0, "", ""
-	}
-	if ar.Data != nil {
-		ar.Data.Code = ""
+	*ar = ApiResponse{
+		Data:  &ApiResponseData{},
+		Error: &ApiError{},
 	}
 	apiResponsePool.Put(ar)
 }
