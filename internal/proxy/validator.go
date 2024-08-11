@@ -243,7 +243,7 @@ func (m *Validator) isArgsWhitelisted() (_ bool) {
 	declinedKeysPtr := declinedKeysPool.Get().(*[]string)
 	declinedKeys := *declinedKeysPtr
 
-	m.requestArgs.VisitAll(func(key, value []byte) {
+	m.requestArgs.VisitAll(func(key, _ []byte) {
 		if _, ok := postArgsWhitelist[futils.UnsafeString(key)]; !ok {
 			declinedKeys = append(declinedKeys, futils.UnsafeString(key))
 		}
