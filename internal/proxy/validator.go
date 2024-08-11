@@ -84,7 +84,7 @@ func (m *Validator) ValidateRequest() (e error) {
 }
 
 func (m *Validator) IsQueryEqual(equal []byte) bool {
-	return m.isQueryEqual(equal)
+	return m.queryLookup(equal)
 }
 
 func (m *Validator) Reset() {
@@ -280,7 +280,7 @@ func (m *Validator) isQueryWhitelisted() (ok bool) {
 	return
 }
 
-func (m *Validator) isQueryEqual(equal []byte) (_ bool) {
+func (m *Validator) queryLookup(equal []byte) (_ bool) {
 	var query []byte
 	if query = m.requestArgs.PeekBytes([]byte("query")); len(query) == 0 {
 		return
