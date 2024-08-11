@@ -71,9 +71,9 @@ func (m *Randomizer) Bootstrap() {
 	m.destroy()
 }
 
-func (m *Randomizer) IsReady() bool {
-	return m.isReady()
-}
+// func (m *Randomizer) IsReady() bool {
+// 	return m.isReady()
+// }
 
 func (m *Randomizer) Randomize() string {
 	return m.randomRelease()
@@ -92,7 +92,6 @@ func (m *Randomizer) loop() {
 		m.abort()
 		return
 	}
-	m.setReady(true)
 
 	update := time.NewTimer(m.relUpdFreq)
 
@@ -124,19 +123,19 @@ func (m *Randomizer) destroy() {
 	}
 }
 
-func (m *Randomizer) setReady(ready bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// func (m *Randomizer) setReady(ready bool) {
+// 	m.mu.Lock()
+// 	defer m.mu.Unlock()
 
-	m.ready = ready
-}
+// 	m.ready = ready
+// }
 
-func (m *Randomizer) isReady() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+// func (m *Randomizer) isReady() bool {
+// 	m.mu.RLock()
+// 	defer m.mu.RUnlock()
 
-	return m.ready
-}
+// 	return m.ready
+// }
 
 func (m *Randomizer) peekReleaseKeyChunks() (_ int, e error) {
 	var res string
@@ -230,10 +229,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 }
 
 func (m *Randomizer) rotateReleases(releases []string) {
-	m.setReady(false)
 	m.mu.Lock()
-
-	defer m.setReady(true)
 	defer m.mu.Unlock()
 
 	m.log.Debug().Msgf("update current %d releases with slice of %d releases",
@@ -242,18 +238,16 @@ func (m *Randomizer) rotateReleases(releases []string) {
 }
 
 func (m *Randomizer) randomRelease() (_ string) {
-	if !m.isReady() {
-		m.log.Warn().Msg("randomizer is not ready yet")
-		return
-	}
-
 	if !m.mu.TryRLock() {
 		m.log.Warn().Msg("could not get randomized release, read lock is not available")
 		return
 	}
-
-	m.mu.RLock()
 	defer m.mu.RUnlock()
+
+	if len(m.releases) == 0 {
+		m.log.Warn().Msg("randomizer is not ready yet")
+		return
+	}
 
 	r := rand.Intn(len(m.releases))
 	return m.releases[r]

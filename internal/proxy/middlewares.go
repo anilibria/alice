@@ -18,7 +18,7 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 
 	if v.IsQueryEqual([]byte("random_release")) {
 		fmt.Println("this is random_release")
-		if m.randomizer != nil && m.randomizer.IsReady() {
+		if m.randomizer != nil {
 			if release := m.randomizer.Randomize(); release != "" {
 				fmt.Fprintln(c, release)
 				fmt.Println("all good - ", release)

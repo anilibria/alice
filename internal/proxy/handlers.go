@@ -40,13 +40,10 @@ func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "BUG! randomizer is not initialized")
 	}
 
-	if !m.randomizer.IsReady() {
-		return fiber.NewError(fiber.StatusServiceUnavailable, "randomizer is not ready yet")
-	}
-
 	var release string
 	if release := m.randomizer.Randomize(); release == "" {
-		return fiber.NewError(fiber.StatusServiceUnavailable, "an error occured in randomizer")
+		return fiber.NewError(fiber.StatusServiceUnavailable,
+			"an error occured in randomizer, maybe it's not ready yet")
 	}
 
 	fmt.Fprintln(c, release)
