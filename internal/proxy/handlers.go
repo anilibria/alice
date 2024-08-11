@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,17 +47,13 @@ func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
 			"an error occured in randomizer, maybe it's not ready yet")
 	}
 
-	switch c.Method() {
-	case fiber.MethodGet:
-		c.Response().Header.Set(fiber.HeaderLocation, "/release/"+release+".html")
-		return respondPlainWithStatus(c, fiber.StatusFound)
-	case fiber.MethodPost:
+	if bytes.Equal(c.Request().PostArgs().Peek("js"), []byte("1")) {
 		fmt.Fprintln(c, release)
 		return respondPlainWithStatus(c, fiber.StatusOK)
-	default:
-		return fiber.NewError(fiber.StatusServiceUnavailable,
-			"invalid method has been sent")
 	}
+
+	c.Response().Header.Set(fiber.HeaderLocation, "/release/"+release+".html")
+	return respondPlainWithStatus(c, fiber.StatusFound)
 }
 
 // internal api handlers
