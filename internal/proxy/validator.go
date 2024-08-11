@@ -23,6 +23,7 @@ type Validator struct {
 
 	requestArgs *fasthttp.Args
 
+	query    []byte
 	cacheKey *Key
 
 	customs CustomHeaders
@@ -43,6 +44,7 @@ func AcquireValidator(c *fiber.Ctx, ctr []byte) (v *Validator) {
 }
 
 func ReleaseValidator(v *Validator) {
+	fasthttp.ReleaseArgs(v.requestArgs)
 	v.Reset()
 	validatorPool.Put(v)
 }
@@ -60,7 +62,6 @@ func (m *Validator) ValidateRequest() (e error) {
 	m.validateCustomHeaders()
 
 	m.requestArgs = fasthttp.AcquireArgs()
-	defer fasthttp.ReleaseArgs(m.requestArgs)
 
 	if e = m.extractRequestKey(); e != nil {
 		return
