@@ -46,8 +46,17 @@ func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
 			"an error occured in randomizer, maybe it's not ready yet")
 	}
 
-	fmt.Fprintln(c, release)
-	return respondPlainWithStatus(c, fiber.StatusOK)
+	switch c.Method() {
+	case fiber.MethodGet:
+		c.Response().Header.Set(fiber.HeaderLocation, "/release/"+release+".html")
+		return respondPlainWithStatus(c, fiber.StatusFound)
+	case fiber.MethodPost:
+		fmt.Fprintln(c, release)
+		return respondPlainWithStatus(c, fiber.StatusOK)
+	default:
+		return fiber.NewError(fiber.StatusServiceUnavailable,
+			"invalid method has been sent")
+	}
 }
 
 // internal api handlers

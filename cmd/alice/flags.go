@@ -319,11 +319,12 @@ func flagsInitialization() []cli.Flag {
 			Category: "Release randomizer",
 			Usage:    "the feature of the legacy",
 			Value:    "apiInfo",
+			Hidden:   true,
 		},
 		&cli.DurationFlag{
 			Name:     "randomizer-update-frequency",
 			Category: "Release randomizer",
-			Value:    1 * time.Minute,
+			Value:    5 * time.Minute,
 		},
 		&cli.DurationFlag{
 			Name:     "randomizer-update-frequency-onerror",

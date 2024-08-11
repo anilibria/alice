@@ -175,7 +175,7 @@ func (m *Service) fiberRouterInitialization() {
 	//
 	// ALICE randomizer method for legacy www
 	if m.randomizer != nil {
-		m.fb.Post("/public/random.php", m.proxy.HandleRandomRelease)
+		m.fb.Use("/public/random.php", m.proxy.HandleRandomRelease)
 	}
 
 	//
