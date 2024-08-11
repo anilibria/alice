@@ -114,8 +114,8 @@ func main() {
 		exitcode = 1
 	}
 
-	// TODO avoid this shit
-	// fucking diode was no `wait` method, so we need to use this `250` shit
+	// TODO avoid this
+	// diode hasn't Wait() method, so we need to use this `250` shit
 	log.Trace().Msg("waiting for diode buf")
 	time.Sleep(250 * time.Millisecond)
 }

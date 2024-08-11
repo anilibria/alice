@@ -134,6 +134,7 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok bool, e error) {
 	var apirsp *utils.ApiResponseWOData
 	if apirsp, e = utils.UnmarshalApiResponse(rsp.Body()); e != nil || apirsp == nil {
+		rlog(c).Warn().Msg("could not parse legacy api response - " + futils.UnsafeString(rsp.Body()))
 		return
 	}
 	defer utils.ReleaseApiResponseWOData(apirsp)
