@@ -184,12 +184,9 @@ func (m *Service) fiberRouterInitialization() {
 	// step1 - validate request
 	apiv1 := m.fb.Group("/public/api", m.proxy.MiddlewareValidation)
 
-	// step2 - reroute random() queries:
-	//
-
-	// step3 - check cache availability and try to respond with it
+	// step2 - check cache availability and try to respond with it
 	apiv1.Use(skip.New(m.proxy.HandleProxyToCache, m.proxy.IsRequestCached))
 
-	// step4 - proxy request to upstream
+	// step3 - proxy request to upstream
 	apiv1.Use(m.proxy.HandleProxyToDst)
 }

@@ -70,10 +70,6 @@ func (m *Randomizer) Bootstrap() {
 	m.destroy()
 }
 
-// func (m *Randomizer) IsReady() bool {
-// 	return m.isReady()
-// }
-
 func (m *Randomizer) Randomize() string {
 	return m.randomRelease()
 }
@@ -122,20 +118,6 @@ func (m *Randomizer) destroy() {
 		m.log.Error().Msg("could not properly close http client - " + e.Error())
 	}
 }
-
-// func (m *Randomizer) setReady(ready bool) {
-// 	m.mu.Lock()
-// 	defer m.mu.Unlock()
-
-// 	m.ready = ready
-// }
-
-// func (m *Randomizer) isReady() bool {
-// 	m.mu.RLock()
-// 	defer m.mu.RUnlock()
-
-// 	return m.ready
-// }
 
 func (m *Randomizer) peekReleaseKeyChunks() (_ int, e error) {
 	var res string
