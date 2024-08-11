@@ -167,7 +167,10 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 	// avoid mass allocs
 	started := time.Now()
 	releases := make([]string, 0, len(m.releases))
-	res, errs, total, banned := "", []string{}, 0, 0
+
+	var res string
+	var errs []string
+	var total, banned int
 
 	for i := 0; i < chunks; i++ {
 		select {
