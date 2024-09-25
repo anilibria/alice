@@ -281,7 +281,7 @@ func flagsInitialization(expertMode bool) []cli.Flag {
 			Category: "GeoIP",
 			Usage: `when geoip-maxmind-permalink is selected and geoip-db-path is empty,
 			once within a certain 'PERIOD' of time app will update the geoip database;
-			do not forget about maxmind donwload limits; set to 0s if want to disable`,
+			do not forget about maxmind download limits; set to 0s if want to disable`,
 			Value: 24 * time.Hour,
 		},
 		&cli.DurationFlag{

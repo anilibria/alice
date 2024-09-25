@@ -78,7 +78,7 @@ func (m *Validator) ValidateRequest() (e error) {
 		m.customs = m.customs | CHCacheBypass
 	}
 
-	// delete or update cache key for futher request processing
+	// delete or update cache key for further request processing
 	// controlled by CustomHeaders
 	m.postValidationMutate(m.requestArgs.QueryString())
 

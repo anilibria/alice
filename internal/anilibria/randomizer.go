@@ -162,14 +162,14 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			errs = append(errs, e.Error())
 			continue
 		} else if e != nil {
-			m.log.Warn().Msg("an error occured while peeking a releases chunk - " + e.Error())
+			m.log.Warn().Msg("an error occurred while peeking a releases chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
 		}
 
 		var releasesChunk Releases
 		if e = json.Unmarshal(futils.UnsafeBytes(res), &releasesChunk); e != nil {
-			m.log.Warn().Msg("an error occured while unmarshal release chunk - " + e.Error())
+			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
 		}
