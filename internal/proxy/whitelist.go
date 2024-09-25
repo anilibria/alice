@@ -94,3 +94,9 @@ var queryWhitelist = map[string]interface{}{
 	"auth_accept_otp": nil,
 	"auth_login_otp":  nil,
 }
+
+var queryBypasslist = map[string]interface{}{
+	"auth_get_otp":    nil,
+	"auth_accept_otp": nil,
+	"auth_login_otp":  nil,
+}
