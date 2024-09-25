@@ -93,6 +93,7 @@ LOOP:
 		case <-update.C:
 			update.Stop()
 
+			var e error
 			var releases []string
 			if releases, e = m.lookupReleases(); e != nil {
 				m.log.Error().Msg("could not updated releases for randomizer - " + e.Error())
