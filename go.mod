@@ -15,7 +15,6 @@ require (
 	github.com/urfave/cli/v2 v2.27.3
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.55.0
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
 
 require (
@@ -36,5 +35,6 @@ require (
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.3.9 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 )
