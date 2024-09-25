@@ -2,8 +2,8 @@ package utils
 
 import (
 	"io"
+	"strconv"
 	"sync"
-  "strconv"
 
 	"github.com/mailru/easyjson"
 )
