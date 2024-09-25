@@ -25,9 +25,10 @@ type Randomizer struct {
 	rctx    context.Context
 	rclient *redis.Client
 
-	releasesKey   string
-	relUpdFreq    time.Duration
-	relUpdFreqErr time.Duration
+	releasesKey    string
+	relUpdFreq     time.Duration
+	relUpdFreqErr  time.Duration
+	relUpdFreqBoot time.Duration
 
 	mu       sync.RWMutex
 	releases []string
@@ -55,8 +56,9 @@ func New(c context.Context) *Randomizer {
 			WriteTimeout: cli.Duration("redis-client-writetimeout"),
 		}),
 
-		relUpdFreq:    cli.Duration("randomizer-update-frequency"),
-		relUpdFreqErr: cli.Duration("randomizer-update-frequency-onerror"),
+		relUpdFreq:     cli.Duration("randomizer-update-frequency"),
+		relUpdFreqErr:  cli.Duration("randomizer-update-frequency-onerror"),
+		relUpdFreqBoot: cli.Duration("randomizer-update-frequency-bootstrap"),
 
 		releases:    make([]string, 0),
 		releasesKey: cli.String("randomizer-releaseskey"),
@@ -80,16 +82,7 @@ func (m *Randomizer) loop() {
 	m.log.Debug().Msg("initiate randomizer release update loop...")
 	defer m.log.Debug().Msg("randomizer release update loop has been closed")
 
-	// initial parsing
-	releases, e := m.lookupReleases()
-	if e != nil {
-		m.log.Error().Msg(e.Error())
-		m.abort()
-		return
-	}
-	m.rotateReleases(releases)
-
-	update := time.NewTimer(m.relUpdFreq)
+	update := time.NewTimer(m.relUpdFreqBoot)
 
 LOOP:
 	for {
