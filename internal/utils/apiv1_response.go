@@ -2,8 +2,8 @@ package utils
 
 import (
 	"io"
+	"strconv"
 	"sync"
-  "strconv"
 
 	"github.com/mailru/easyjson"
 )
@@ -43,7 +43,7 @@ func AcquireApiResponseWOData() *ApiResponseWOData {
 
 func ReleaseApiResponseWOData(ar *ApiResponseWOData) {
 	ar.Status = false
-	ar.Error.Code, ar.Error.Message, ar.Error.Description = 0, "", ""
+	ar.Error.Code, ar.Error.Message, ar.Error.Description = "", "", ""
 	apiResponseWODataPool.Put(ar)
 }
 

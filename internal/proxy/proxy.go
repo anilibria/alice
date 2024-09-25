@@ -139,7 +139,7 @@ func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok boo
 	}
 	defer utils.ReleaseApiResponseWOData(apirsp)
 
-	if apirsp.Status && (apirsp.Error == nil || apirsp.Error.Code == 0) {
+	if apirsp.Status && (apirsp.Error == nil || apirsp.Error.Code == "0") {
 		ok = true
 		return
 	}
@@ -160,7 +160,7 @@ func (*Proxy) unmarshalApiResponse(c *fiber.Ctx, rsp *fasthttp.Response) (ok boo
 		rlog(c).Trace().Msgf("%+v", apirsp.Error)
 	}
 
-	rlog(c).Info().Msgf("api server respond with %d - %s", apirsp.Error.Code, apirsp.Error.Message)
+	rlog(c).Info().Msgf("api server respond with %s - %s", apirsp.Error.Code, apirsp.Error.Message)
 	return
 }
 
