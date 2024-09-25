@@ -62,7 +62,7 @@ func main() {
 	})
 
 	app.HideHelpCommand = true
-	app.Flags = flagsInitialization(slices.Contains(os.Args, "--expert-mode") == false)
+	app.Flags = flagsInitialization(!slices.Contains(os.Args, "--expert-mode"))
 
 	app.Action = func(c *cli.Context) (e error) {
 		var lvl zerolog.Level
