@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func flagsInitialization() []cli.Flag {
+func flagsInitialization(expertMode bool) []cli.Flag {
 	return []cli.Flag{
 		// common settings
 		&cli.StringFlag{
@@ -15,6 +15,11 @@ func flagsInitialization() []cli.Flag {
 			Usage:   "levels: trace, debug, info, warn, err, panic, disabled",
 			Aliases: []string{"l"},
 			EnvVars: []string{"LOG_LEVEL"},
+		},
+		&cli.BoolFlag{
+			Name:               "expert-mode",
+			Usage:              "show hidden flags",
+			DisableDefaultText: true,
 		},
 
 		// common settings : syslog
@@ -37,7 +42,7 @@ func flagsInitialization() []cli.Flag {
 			Category: "Syslog settings",
 			Usage:    "optional setting; more information in syslog RFC",
 			Value:    "",
-			Hidden:   true,
+			Hidden:   expertMode,
 		},
 
 		// fiber-server settings
@@ -64,7 +69,7 @@ func flagsInitialization() []cli.Flag {
 			if enabled, the application will need to be ran
 			through a shell because prefork mode sets environment variables;
 			EXPERIMENTAL! USE CAREFULLY!`,
-			Hidden:             true,
+			Hidden:             expertMode,
 			DisableDefaultText: true,
 		},
 		&cli.DurationFlag{
@@ -105,21 +110,21 @@ func flagsInitialization() []cli.Flag {
 		&cli.BoolFlag{
 			Name:               "limiter-enable",
 			Category:           "Limiter settings",
-			Hidden:             true,
+			Hidden:             expertMode,
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
 			Name:               "limiter-use-bbolt",
 			Category:           "Limiter settings",
 			Usage:              "use bbolt key\value file database instead of memory database",
-			Hidden:             true,
+			Hidden:             expertMode,
 			DisableDefaultText: true,
 		},
 		&cli.BoolFlag{
 			Name:               "limiter-bbolt-reset",
 			Category:           "Limiter settings",
 			Usage:              "if bbolt used as storage, reset all limited IPs on startup",
-			Hidden:             true,
+			Hidden:             expertMode,
 			DisableDefaultText: true,
 		},
 		&cli.IntFlag{
@@ -319,7 +324,7 @@ func flagsInitialization() []cli.Flag {
 			Category: "Release randomizer",
 			Usage:    "the feature of the legacy",
 			Value:    "apiInfo",
-			Hidden:   true,
+			Hidden:   expertMode,
 		},
 		&cli.DurationFlag{
 			Name:     "randomizer-update-frequency",
@@ -330,7 +335,7 @@ func flagsInitialization() []cli.Flag {
 			Name:     "randomizer-update-frequency-onerror",
 			Category: "Release randomizer",
 			Value:    1 * time.Minute,
-			Hidden:   true,
+			Hidden:   expertMode,
 		},
 		&cli.DurationFlag{
 			Name:     "randomizer-update-frequency-bootstrap",
@@ -341,25 +346,25 @@ func flagsInitialization() []cli.Flag {
 		&cli.IntFlag{
 			Name:     "redis-client-maxretries",
 			Category: "Release randomizer",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    3,
 		},
 		&cli.DurationFlag{
 			Name:     "redis-client-dialtimeout",
 			Category: "Release randomizer",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    5 * time.Second,
 		},
 		&cli.DurationFlag{
 			Name:     "redis-client-readtimeout",
 			Category: "Release randomizer",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    3 * time.Second,
 		},
 		&cli.DurationFlag{
 			Name:     "redis-client-writetimeout",
 			Category: "Release randomizer",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    3 * time.Second,
 		},
 
@@ -368,7 +373,7 @@ func flagsInitialization() []cli.Flag {
 			Name:               "anilibrix-cmpb-mode",
 			Category:           "Feature flags",
 			Usage:              "avoiding 'Cannot POST //public/api/index.php' errors with req rewrite",
-			Hidden:             true,
+			Hidden:             expertMode,
 			DisableDefaultText: true,
 		},
 	}
