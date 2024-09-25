@@ -6,13 +6,13 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/diode"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slices"
 
 	"github.com/anilibria/alice/internal/service"
 	"github.com/anilibria/alice/internal/utils"
@@ -62,7 +62,8 @@ func main() {
 	})
 
 	app.HideHelpCommand = true
-	app.Flags = flagsInitialization(!slices.Contains(os.Args, "--expert-mode"))
+	app.Flags = flagsInitialization(
+		!strings.Contains(strings.Join(os.Args, " "), "--expert-mode"))
 
 	app.Action = func(c *cli.Context) (e error) {
 		var lvl zerolog.Level
