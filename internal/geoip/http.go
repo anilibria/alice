@@ -127,7 +127,7 @@ LOOP:
 			update.Stop()
 
 			if !m.muUpdate.TryLock() {
-				m.log.Error().Msg("could not start the mmdb update, last proccess is not marked as complete")
+				m.log.Error().Msg("could not start the mmdb update, last process is not marked as complete")
 				update.Reset(m.mmRetryFreq)
 				continue
 			}

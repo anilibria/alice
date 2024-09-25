@@ -74,7 +74,11 @@ func (m *Validator) ValidateRequest() (e error) {
 		return errors.New("invalid query detected")
 	}
 
-	// delete or update cache key for futher request processing
+	if m.isQueryBypassListed() {
+		m.customs = m.customs | CHCacheBypass
+	}
+
+	// delete or update cache key for further request processing
 	// controlled by CustomHeaders
 	m.postValidationMutate(m.requestArgs.QueryString())
 
@@ -238,7 +242,7 @@ var declinedKeysPool = sync.Pool{
 
 func (m *Validator) isArgsWhitelisted() (_ bool) {
 	// []string pool without allocations
-	// researched from https://vk.cc/cys872
+	// researched here - https://vk.cc/cys872
 	declinedKeysPtr := declinedKeysPool.Get().(*[]string)
 	declinedKeys := *declinedKeysPtr
 
@@ -277,6 +281,16 @@ func (m *Validator) isQueryWhitelisted() (ok bool) {
 	}
 
 	return
+}
+
+func (m *Validator) isQueryBypassListed() (ok bool) {
+	var query []byte
+	if query = m.requestArgs.PeekBytes([]byte("query")); len(query) == 0 {
+		return true
+	}
+
+	_, ok = queryBypasslist[futils.UnsafeString(query)]
+	return ok
 }
 
 func (m *Validator) queryLookup(equal []byte) (_ bool) {
