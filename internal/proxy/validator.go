@@ -74,7 +74,7 @@ func (m *Validator) ValidateRequest() (e error) {
 		return errors.New("invalid query detected")
 	}
 
-	// delete or update cache key for futher request processing
+	// delete or update cache key for further request processing
 	// controlled by CustomHeaders
 	m.postValidationMutate(m.requestArgs.QueryString())
 
