@@ -15,6 +15,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.3
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.55.0
+	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
 
 require (
