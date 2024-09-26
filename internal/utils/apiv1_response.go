@@ -2,7 +2,6 @@ package utils
 
 import (
 	"io"
-	"strconv"
 	"sync"
 
 	"github.com/mailru/easyjson"
@@ -23,7 +22,7 @@ type (
 		Code string
 	}
 	ApiError struct {
-		Code        string
+		Code        int
 		Message     string
 		Description string
 	}
@@ -43,7 +42,7 @@ func AcquireApiResponseWOData() *ApiResponseWOData {
 
 func ReleaseApiResponseWOData(ar *ApiResponseWOData) {
 	ar.Status = false
-	ar.Error.Code, ar.Error.Message, ar.Error.Description = "", "", ""
+	ar.Error.Code, ar.Error.Message, ar.Error.Description = 0, "", ""
 	apiResponseWODataPool.Put(ar)
 }
 
@@ -73,7 +72,7 @@ func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
 	defer ReleaseApiResponse(apirsp)
 
 	apirsp.Error.Code, apirsp.Error.Message, apirsp.Error.Description =
-		strconv.Itoa(status), msg, desc
+		status, msg, desc
 	apirsp.Data = nil
 
 	var buf []byte

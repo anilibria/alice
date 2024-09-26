@@ -292,7 +292,7 @@ func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils3(in *jlexer.Lexer
 		}
 		switch key {
 		case "code":
-			out.Code = string(in.String())
+			out.Code = int(in.Int())
 		case "message":
 			out.Message = string(in.String())
 		case "description":
@@ -314,7 +314,7 @@ func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils3(out *jwriter.Wri
 	{
 		const prefix string = ",\"code\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.Code))
+		out.Int(int(in.Code))
 	}
 	{
 		const prefix string = ",\"message\":"
