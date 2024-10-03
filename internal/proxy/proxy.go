@@ -120,6 +120,8 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		return
 	}
 
+	rlog(c).Debug().Msg(rsp.String() + rsp.String() + rsp.String() + rsp.String())
+
 	var ok bool
 	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
 		rlog(c).Warn().Msg(e.Error())
