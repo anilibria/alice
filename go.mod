@@ -12,7 +12,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/rs/zerolog v1.33.0
-	github.com/urfave/cli/v2 v2.27.3
+	github.com/urfave/cli/v2 v2.27.4
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.56.0
 )
