@@ -120,6 +120,9 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		return
 	}
 
+	// copy all response headers (like Set-Cookie and etc)
+	rsp.Header.CopyTo(&c.Response().Header)
+
 	var ok bool
 	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
 		rlog(c).Warn().Msg(e.Error())
