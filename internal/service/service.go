@@ -104,9 +104,8 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 
 			// `rspcode` - apiv1 legacy hardcode
 			// if u have 4XX or 5XX in service, u must respond with 200
-			rspcode, respdesc, respond :=
+			rspcode, respond :=
 				fiber.StatusOK,
-				errdesc,
 				func(status int, msg, desc string) {
 					if e := utils.RespondWithApiError(status, msg, desc, c); e != nil {
 						rlog(c).Error().Msg("could not respond with JSON error - " + e.Error())
@@ -120,7 +119,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 
 			// parse fiber error
 			if !errors.As(err, &ferr) {
-				respond(fiber.StatusInternalServerError, err.Error(), "")
+				respond(fiber.StatusInternalServerError, err.Error(), errdesc)
 				return c.SendStatus(rspcode)
 			}
 
@@ -128,7 +127,7 @@ func NewService(c *cli.Context, l *zerolog.Logger, s io.Writer) *Service {
 				rlog(c).Debug().Msgf("%+v", err)
 			}
 
-			respond(ferr.Code, ferr.Error(), respdesc)
+			respond(ferr.Code, ferr.Error(), errdesc)
 			return c.SendStatus(rspcode)
 		},
 	})
