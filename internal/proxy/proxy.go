@@ -126,6 +126,12 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		return
 	}
 
+	if len(rsp.Header.Peek("Set-Cookie")) != 0 {
+		key := c.Context().UserValue(utils.UVCacheKey).(*Key)
+		key.Reset()
+		c.Response().Header.Set("X-Alice-Cache", "BYPASS")
+	}
+
 	var ok bool
 	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
 		rlog(c).Warn().Msg(e.Error())
