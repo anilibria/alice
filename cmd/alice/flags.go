@@ -319,6 +319,11 @@ func flagsInitialization(expertMode bool) []cli.Flag {
 			Category: "Release randomizer",
 			Value:    0,
 		},
+		&cli.BoolFlag{
+			Name:     "randomizer-redis-zstd-enable",
+			Category: "Release randomizer",
+			Usage:    "enable redis payload decompression with zstd algo",
+		},
 		&cli.StringFlag{
 			Name:     "randomizer-releaseskey",
 			Category: "Release randomizer",
