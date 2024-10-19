@@ -34,12 +34,7 @@ type Randomizer struct {
 	encoder *zstd.Encoder
 	decoder *zstd.Decoder
 
-	mu       sync.RWMutex
 	releases *Releases
-
-	releasesold   []string
-	rawreleases   map[string][]byte
-	releaseBlocks map[string]*ReleaseBlockedInfo
 }
 
 func New(c context.Context) *Randomizer {
@@ -78,12 +73,8 @@ func New(c context.Context) *Randomizer {
 		encoder: enc,
 		decoder: dec,
 
-		releases: NewReleases(WithFetchTries(cli.Int("randomizer-random-fetch-tries"))),
-
-		releasesold:   make([]string, 0),
-		rawreleases:   make(map[string][]byte),
-		releaseBlocks: make(map[string]*ReleaseBlockedInfo),
-		releasesKey:   cli.String("randomizer-releaseskey"),
+		releases:    NewReleases(WithFetchTries(cli.Int("randomizer-random-fetch-tries"))),
+		releasesKey: cli.String("randomizer-releaseskey"),
 	}
 
 	return r
@@ -95,29 +86,28 @@ func (m *Randomizer) Bootstrap() {
 }
 
 func (m *Randomizer) Randomize(region string) (_ string, e error) {
-	// return m.randomRelease()
 	var release *Release
-	if release, e = m.releases.RandomRelease(""); e != nil {
+	if release, e = m.releases.RandomRelease(region); e != nil {
 		return
 	}
 
 	return release.Code, e
 }
 
-func (m *Randomizer) RawRelease(ident []byte) (release []byte, ok bool, e error) {
-	var rawrelease []byte
-	if rawrelease, ok = m.rawreleases[futils.UnsafeString(ident)]; !ok {
-		return
-	}
+// func (m *Randomizer) RawRelease(ident []byte) (release []byte, ok bool, e error) {
+// 	var rawrelease []byte
+// 	if rawrelease, ok = m.rawreleases[futils.UnsafeString(ident)]; !ok {
+// 		return
+// 	}
 
-	// decompress chunk response from redis
-	if release, e = m.decompressPayload(rawrelease); e != nil {
-		m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
-		return
-	}
+// 	// decompress chunk response from redis
+// 	if release, e = m.decompressPayload(rawrelease); e != nil {
+// 		m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
+// 		return
+// 	}
 
-	return
-}
+// 	return
+// }
 
 //
 //
@@ -275,15 +265,6 @@ func (m *Randomizer) lookupReleases(releases map[string]*Release) (chunks, faile
 	}
 
 	return chunks, chunks - len(errs), banned, nil
-}
-
-func (m *Randomizer) rotateReleases(releases []string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.log.Debug().Msgf("update current %d releases with slice of %d releases",
-		len(m.releasesold), len(releases))
-	m.releasesold = releases
 }
 
 func (m *Randomizer) chunkFetchFromRedis(key string) (chunk []byte, e error) {

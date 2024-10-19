@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -80,26 +79,26 @@ func (m *Proxy) middlewareReleaseRequest(c *fiber.Ctx, v *Validator) (e error) {
 		return c.Next() // bypass randomizer module
 	}
 
-	var ok bool
-	var ident []byte
-	if ident, ok = v.Arg([]byte("code")); !ok {
-		if ident, ok = v.Arg([]byte("id")); !ok {
-			return c.Next() // bypass to origin
-		}
-	}
+	// var ok bool
+	// var ident []byte
+	// if ident, ok = v.Arg([]byte("code")); !ok {
+	// 	if ident, ok = v.Arg([]byte("id")); !ok {
+	// 		return c.Next() // bypass to origin
+	// 	}
+	// }
 
-	var release []byte
-	if release, ok, e = m.randomizer.RawRelease(ident); e != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
-	} else if !ok {
-		return c.Next() // bypass to origin
-	}
+	// var release []byte
+	// if release, ok, e = m.randomizer.RawRelease(ident); e != nil {
+	// 	return fiber.NewError(fiber.StatusInternalServerError, e.Error())
+	// } else if !ok {
+	// 	return c.Next() // bypass to origin
+	// }
 
-	if e = utils.RespondWithRawJSON(release, c); e != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
-	}
+	// if e = utils.RespondWithRawJSON(release, c); e != nil {
+	// 	return fiber.NewError(fiber.StatusInternalServerError, e.Error())
+	// }
 
-	fmt.Println("returned cached value")
+	// fmt.Println("returned cached value")
 
 	c.Response().Header.Set("X-Alice-Cache", "HIT")
 	return respondPlainWithStatus(c, fiber.StatusOK)

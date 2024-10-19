@@ -2,6 +2,7 @@ package anilibria
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -26,9 +27,9 @@ func WithFetchTries(tries int) ROption {
 type Releases struct {
 	opts *options
 
-	mu      sync.RWMutex
-	idxid   map[string]*Release
-	idxcode map[string]*Release
+	mu       sync.RWMutex
+	releases map[string]*Release
+	idxcode  []string
 
 	// commitedmu   sync.RWMutex
 	// commitedid   map[string]*Release
@@ -37,8 +38,7 @@ type Releases struct {
 
 func NewReleases(opts ...ROption) *Releases {
 	r := &Releases{
-		idxid:   make(map[string]*Release),
-		idxcode: make(map[string]*Release),
+		releases: make(map[string]*Release),
 
 		opts: &options{
 			fetchtries: 10,
@@ -53,15 +53,30 @@ func NewReleases(opts ...ROption) *Releases {
 }
 
 func (m *Releases) Commit(releases map[string]*Release) {
+	length, _ := actionWithRLock[int](&m.mu, func() (lenth int, _ bool) {
+		lenth = len(m.releases)
+		return lenth, lenth != 0
+	})
+
 	actionWithLock(&m.mu, func() {
-		m.idxcode = releases
-		m.idxid = make(map[string]*Release)
+		m.releases = releases
+		m.idxcode = make([]string, 0, len(m.releases))
 
-		for _, release := range m.idxcode {
-			m.idxid[strconv.Itoa(int(release.Id))] = release
+		for _, release := range m.releases {
+			if release == nil {
+				fmt.Println("BUG: we caught en empty release in commit stage!")
+				continue
+			}
 
+			// build index ID:RELEASE for faster searching
+			m.releases[strconv.Itoa(int(release.Id))] = release
+
+			// store code in slice for further Random() requests
+			m.idxcode = append(m.idxcode, release.Code)
 		}
 	})
+
+	fmt.Printf("COMMITING: old map %d len, new map %d len\n", length, m.Len())
 }
 
 func (m *Releases) Len() (length int) {
@@ -79,13 +94,17 @@ func (m *Releases) RandomRelease(region string) (release *Release, e error) {
 
 	for try := 1; try <= m.opts.fetchtries; try++ {
 		release, ok = actionWithRLock(&m.mu, func() (*Release, bool) {
-			max := len(m.idxid)
+			var max int
+			if max = len(m.idxcode); max == 0 {
+				return nil, false
+			}
 
 			// skipcq: GSC-G404 math/rand is enoght here
-			return m.idxid[strconv.Itoa(rand.Intn(max))], max != 0
+			id := m.idxcode[rand.Intn(max)]
+			return m.releases[id], true
 		})
 
-		if !ok {
+		if !ok || release == nil {
 			return nil, errors.New("randomizer has not ready yet or unexpected error occurred")
 		}
 
@@ -105,7 +124,7 @@ func (m *Releases) RandomRelease(region string) (release *Release, e error) {
 
 func (m *Releases) IsExists(code string) (ok bool) {
 	_, ok = actionWithRLock(&m.mu, func() (_ *Release, ok bool) {
-		_, ok = m.idxcode[code]
+		_, ok = m.releases[code]
 		return
 	})
 
