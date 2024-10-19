@@ -172,6 +172,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
 		}
 
+		// get compressed chunk response from redis
 		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
 			e = fmt.Errorf("given chunk number %d is not exists", i)
 			m.log.Warn().Msg(e.Error())
@@ -183,6 +184,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			continue
 		}
 
+		// decompress chunk response from redis
 		var dres []byte
 		if dres, e = m.decompressPayload(futils.UnsafeBytes(res)); e != nil {
 			m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
@@ -190,6 +192,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			continue
 		}
 
+		// get json formated response from decompressed response
 		var releasesChunk Releases
 		if e = json.Unmarshal(dres, &releasesChunk); e != nil {
 			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
@@ -197,6 +200,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			continue
 		}
 
+		// parse json chunk response
 		for _, release := range releasesChunk {
 			if release.BlockedInfo != nil && release.BlockedInfo.IsBlockedByCopyrights {
 				m.log.Debug().Msgf("release %d (%s) worldwide banned, skip it...", release.Id, release.Code)
