@@ -97,6 +97,10 @@ func (m *Validator) Arg(lookup []byte) ([]byte, bool) {
 	return m.argLookup(lookup)
 }
 
+func (m *Validator) ArgsLen() int {
+	return m.argsLen()
+}
+
 func (m *Validator) Reset() {
 	m.Context().RemoveUserValue(utils.UVCacheKey)
 	ReleaseKey(m.cacheKey)
@@ -313,4 +317,8 @@ func (m *Validator) argLookup(lookup []byte) ([]byte, bool) {
 	query := m.requestArgs.PeekBytes(lookup)
 
 	return query, len(query) != 0
+}
+
+func (m *Validator) argsLen() int {
+	return m.requestArgs.Len()
 }

@@ -21,43 +21,17 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 
 	// hijack all query=random_release queries
 	if v.IsQueryEqual([]byte("random_release")) {
-		if m.randomizer != nil {
-			if release := m.randomizer.Randomize(); release != "" {
-				if e = utils.RespondWithRandomRelease(release, c); e == nil {
-					c.Response().Header.Set("X-Alice-Cache", "HIT")
-					return respondPlainWithStatus(c, fiber.StatusOK)
-				}
-				rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
-			}
-		}
+		return m.middlewareRandomReleaseRequest(c)
 	}
 
-	if v.IsQueryEqual([]byte("release")) {
-		if m.randomizer != nil {
-			if code, ok := v.Arg([]byte("code")); ok {
-				if release, ok, e := m.randomizer.GetRawRelease(code); e == nil && ok {
-					if e = utils.RespondWithRawJSON(release, c); e == nil {
-						fmt.Println("returned cached value")
-						return respondPlainWithStatus(c, fiber.StatusOK)
-					} else {
-						return fiber.NewError(fiber.StatusBadRequest, e.Error())
-					}
-				} else if e != nil {
-					return fiber.NewError(fiber.StatusBadRequest, e.Error())
-				} else {
-					return fiber.NewError(fiber.StatusNotFound, "3")
-				}
-			} else {
-				return fiber.NewError(fiber.StatusBadRequest, "2")
-			}
-		} else {
-			return fiber.NewError(fiber.StatusBadRequest, "1")
-		}
+	// hijack all query=random queries
+	fmt.Printf("ARGS LEN %d\n", v.ArgsLen())
+	if v.IsQueryEqual([]byte("release")) && v.ArgsLen() == 2 {
+		return m.middlewareReleaseRequest(c, v)
 	}
 
 	// continue request processing
-	e = c.Next()
-	return
+	return c.Next()
 }
 
 func (m *Proxy) MiddlewareInternalApi(c *fiber.Ctx) (_ error) {
@@ -72,4 +46,62 @@ func (m *Proxy) MiddlewareInternalApi(c *fiber.Ctx) (_ error) {
 	}
 
 	return c.Next()
+}
+
+///
+///
+///
+
+func (m *Proxy) middlewareRandomReleaseRequest(c *fiber.Ctx) (e error) {
+	if m.randomizer == nil {
+		return c.Next() // bypass randomizer module
+	}
+
+	country := m.countryByRemoteIP(c)
+
+	var release string
+	if release, e = m.randomizer.Randomize(country); e != nil {
+		rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
+		return c.Next() // bypass randomizer module
+	} else if release == "" {
+		return c.Next() // bypass randomizer module
+	}
+
+	if e = utils.RespondWithRandomRelease(release, c); e != nil {
+		rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
+		return c.Next() // bypass randomizer module
+	}
+
+	c.Response().Header.Set("X-Alice-Cache", "HIT")
+	return respondPlainWithStatus(c, fiber.StatusOK)
+}
+
+func (m *Proxy) middlewareReleaseRequest(c *fiber.Ctx, v *Validator) (e error) {
+	if m.randomizer == nil {
+		return c.Next() // bypass randomizer module
+	}
+
+	var ok bool
+	var ident []byte
+	if ident, ok = v.Arg([]byte("code")); !ok {
+		if ident, ok = v.Arg([]byte("id")); !ok {
+			return c.Next() // bypass to origin
+		}
+	}
+
+	var release []byte
+	if release, ok, e = m.randomizer.RawRelease(ident); e != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
+	} else if !ok {
+		return c.Next() // bypass to origin
+	}
+
+	if e = utils.RespondWithRawJSON(release, c); e != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
+	}
+
+	fmt.Println("returned cached value")
+
+	c.Response().Header.Set("X-Alice-Cache", "HIT")
+	return respondPlainWithStatus(c, fiber.StatusOK)
 }

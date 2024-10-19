@@ -2,20 +2,20 @@ package anilibria
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/anilibria/alice/internal/utils"
+	"github.com/goccy/go-json"
 	futils "github.com/gofiber/fiber/v2/utils"
 	"github.com/klauspost/compress/zstd"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
+	"github.com/valyala/bytebufferpool"
 )
 
 type Randomizer struct {
@@ -34,9 +34,12 @@ type Randomizer struct {
 	encoder *zstd.Encoder
 	decoder *zstd.Decoder
 
-	mu          sync.RWMutex
-	releases    []string
-	rawreleases map[string][]byte
+	mu       sync.RWMutex
+	releases *Releases
+
+	releasesold   []string
+	rawreleases   map[string][]byte
+	releaseBlocks map[string]*ReleaseBlockedInfo
 }
 
 func New(c context.Context) *Randomizer {
@@ -45,8 +48,8 @@ func New(c context.Context) *Randomizer {
 	var dec *zstd.Decoder
 	var enc *zstd.Encoder
 	if cli.Bool("randomizer-redis-zstd-enable") {
+		enc, _ = zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedBetterCompression))
 		dec, _ = zstd.NewReader(nil, zstd.WithDecoderConcurrency(0))
-		enc, _ = zstd.NewWriter(nil)
 	}
 
 	r := &Randomizer{
@@ -75,9 +78,12 @@ func New(c context.Context) *Randomizer {
 		encoder: enc,
 		decoder: dec,
 
-		releases:    make([]string, 0),
-		rawreleases: make(map[string][]byte),
-		releasesKey: cli.String("randomizer-releaseskey"),
+		releases: NewReleases(WithFetchTries(cli.Int("randomizer-random-fetch-tries"))),
+
+		releasesold:   make([]string, 0),
+		rawreleases:   make(map[string][]byte),
+		releaseBlocks: make(map[string]*ReleaseBlockedInfo),
+		releasesKey:   cli.String("randomizer-releaseskey"),
 	}
 
 	return r
@@ -88,13 +94,21 @@ func (m *Randomizer) Bootstrap() {
 	m.destroy()
 }
 
-func (m *Randomizer) Randomize() string {
-	return m.randomRelease()
+func (m *Randomizer) Randomize(region string) (_ string, e error) {
+	// return m.randomRelease()
+	var release *Release
+	if release, e = m.releases.RandomRelease(""); e != nil {
+		return
+	}
+
+	return release.Code, e
 }
 
-func (m *Randomizer) GetRawRelease(code []byte) (release []byte, ok bool, e error) {
+func (m *Randomizer) RawRelease(ident []byte) (release []byte, ok bool, e error) {
 	var rawrelease []byte
-	rawrelease, ok = m.rawreleases[futils.UnsafeString(code)]
+	if rawrelease, ok = m.rawreleases[futils.UnsafeString(ident)]; !ok {
+		return
+	}
 
 	// decompress chunk response from redis
 	if release, e = m.decompressPayload(rawrelease); e != nil {
@@ -105,6 +119,8 @@ func (m *Randomizer) GetRawRelease(code []byte) (release []byte, ok bool, e erro
 	return
 }
 
+//
+//
 //
 
 func (m *Randomizer) loop() {
@@ -123,14 +139,22 @@ LOOP:
 			update.Stop()
 
 			var e error
-			var releases []string
-			if releases, e = m.lookupReleases(); e != nil {
+			var chunks, failed, banned int
+			started, releases := time.Now(), make(map[string]*Release, m.releases.Len()+10)
+			// m.releases.Len()+10 - avoiding mass alocs in lookupReleases()
+
+			if chunks, failed, banned, e = m.lookupReleases(releases); e != nil {
 				m.log.Error().Msg("could not updated releases for randomizer - " + e.Error())
 				update.Reset(m.relUpdFreqErr)
 				continue
 			}
 
-			m.rotateReleases(releases)
+			parsed := time.Now()
+			m.log.Info().Msgf("in %s from %d (of %d) chunks added %d releases and %d WW banned",
+				time.Since(started).String(), failed, chunks, len(releases), banned)
+
+			m.releases.Commit(releases)
+			m.log.Debug().Msgf("new releases commited for %s", time.Since(parsed).String())
 			update.Reset(m.relUpdFreq)
 		}
 	}
@@ -138,7 +162,7 @@ LOOP:
 
 func (m *Randomizer) destroy() {
 	if e := m.rclient.Close(); e != nil {
-		m.log.Error().Msg("could not properly close http client - " + e.Error())
+		m.log.Error().Msg("could not properly close redis client - " + e.Error())
 	}
 }
 
@@ -163,8 +187,7 @@ func (m *Randomizer) peekReleaseKeyChunks() (_ int, e error) {
 	return strconv.Atoi(futils.UnsafeString(dres))
 }
 
-func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R1005 needed to be kept as it is
-	var chunks int
+func (m *Randomizer) lookupReleases(releases map[string]*Release) (chunks, failed, banned int, e error) {
 	if chunks, e = m.peekReleaseKeyChunks(); e != nil {
 		return
 	} else if chunks == 0 {
@@ -174,13 +197,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R100
 	m.log.Trace().Msgf("release key says about %d chunks", chunks)
 	m.log.Info().Msgf("staring release parsing from redis with %d chunks", chunks)
 
-	// avoid mass allocs
-	started := time.Now()
-	releases := make([]string, 0, len(m.releases))
-
-	var res string
-	var errs []string
-	var total, banned int
+	errs := make([]string, 0, chunks)
 
 	for i := 0; i < chunks; i++ {
 		select {
@@ -191,37 +208,35 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R100
 			m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
 		}
 
-		// get compressed chunk response from redis
-		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
+		chunk := bytebufferpool.Get()
+		defer func() {
+			chunk.Reset()
+			bytebufferpool.Put(chunk)
+		}()
+
+		// get decompressed chunk from redis
+		if chunk.B, e = m.chunkFetchFromRedis(m.releasesKey + strconv.Itoa(i)); e != nil {
+			m.log.Warn().Msg("an error occurred while peeking a releases chunk - " + e.Error())
+			errs = append(errs, e.Error())
+			continue
+		} else if chunk.Len() == 0 {
 			e = fmt.Errorf("given chunk number %d is not exists", i)
 			m.log.Warn().Msg(e.Error())
 			errs = append(errs, e.Error())
 			continue
-		} else if e != nil {
-			m.log.Warn().Msg("an error occurred while peeking a releases chunk - " + e.Error())
-			errs = append(errs, e.Error())
-			continue
 		}
 
-		// decompress chunk response from redis
-		var dres []byte
-		if dres, e = m.decompressPayload(futils.UnsafeBytes(res)); e != nil {
-			m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
-			errs = append(errs, e.Error())
-			continue
-		}
-
-		//
-		var rawReleases RawReleases
-		if e = json.Unmarshal(dres, &rawReleases); e != nil {
+		// store raw json objects for further query=release responding
+		var rawReleases RawReleasesChunk
+		if e = json.Unmarshal(chunk.B, &rawReleases); e != nil {
 			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
 		}
 
 		// get json formated response from decompressed response
-		var releasesChunk Releases
-		if e = json.Unmarshal(dres, &releasesChunk); e != nil {
+		var releasesChunk ReleasesChunk
+		if e = json.Unmarshal(chunk.B, &releasesChunk); e != nil {
 			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
@@ -229,23 +244,25 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R100
 
 		// parse json chunk response
 		for id, release := range releasesChunk {
-			// save rawdata from redis for query=release
-			m.rawreleases[release.Code] = m.compressPayload(rawReleases[id])
-
-			if release.BlockedInfo != nil && release.BlockedInfo.IsBlockedByCopyrights {
-				m.log.Debug().Msgf("release %d (%s) worldwide banned, skip it...", release.Id, release.Code)
-				banned++
+			if release == nil {
+				m.log.Error().Msg("BUG! found an empty release after json.Unmarshal")
 				continue
+			}
+
+			// save raw json for query=release
+			release.SetRawJSON(rawReleases[id])
+
+			if b, _ := release.IsOverworldBlocked(); b {
+				m.log.Debug().Msgf("release %d (%s) worldwide banned", release.Id, release.Code)
+				banned++
 			}
 
 			if zerolog.GlobalLevel() <= zerolog.DebugLevel {
 				m.log.Trace().Msgf("release %d with code %s found", release.Id, release.Code)
 			}
 
-			total++
-			releases = append(releases, release.Code)
+			releases[release.Code] = release
 		}
-
 	}
 
 	if errslen := len(errs); errslen != 0 {
@@ -257,9 +274,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R100
 		}
 	}
 
-	m.log.Info().Msgf("in %s from %d (of %d) chunks added %d releases and %d skipped because of WW ban",
-		time.Since(started).String(), chunks-len(errs), chunks, total, banned)
-	return releases, nil
+	return chunks, chunks - len(errs), banned, nil
 }
 
 func (m *Randomizer) rotateReleases(releases []string) {
@@ -267,24 +282,27 @@ func (m *Randomizer) rotateReleases(releases []string) {
 	defer m.mu.Unlock()
 
 	m.log.Debug().Msgf("update current %d releases with slice of %d releases",
-		len(m.releases), len(releases))
-	m.releases = releases
+		len(m.releasesold), len(releases))
+	m.releasesold = releases
 }
 
-func (m *Randomizer) randomRelease() (_ string) {
-	if !m.mu.TryRLock() {
-		m.log.Warn().Msg("could not get randomized release, read lock is not available")
+func (m *Randomizer) chunkFetchFromRedis(key string) (chunk []byte, e error) {
+	var compressed string
+
+	// get compressed chunk response from redis
+	if compressed, e = m.rclient.Get(m.rctx, key).Result(); e == redis.Nil {
+		e = nil
+		return
+	} else if e != nil {
 		return
 	}
-	defer m.mu.RUnlock()
 
-	if len(m.releases) == 0 {
-		m.log.Warn().Msg("randomizer is not ready yet")
+	// decompress chunk response from redis
+	if chunk, e = m.decompressPayload(futils.UnsafeBytes(compressed)); e != nil {
 		return
 	}
 
-	r := rand.Intn(len(m.releases)) // skipcq: GSC-G404 math/rand is enoght here
-	return m.releases[r]
+	return
 }
 
 func (m *Randomizer) decompressPayload(payload []byte) ([]byte, error) {
