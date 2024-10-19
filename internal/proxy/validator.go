@@ -93,6 +93,10 @@ func (m *Validator) IsQueryEqual(equal []byte) bool {
 	return m.queryLookup(equal)
 }
 
+func (m *Validator) Arg(lookup []byte) ([]byte, bool) {
+	return m.argLookup(lookup)
+}
+
 func (m *Validator) Reset() {
 	m.Context().RemoveUserValue(utils.UVCacheKey)
 	ReleaseKey(m.cacheKey)
@@ -303,4 +307,10 @@ func (m *Validator) queryLookup(equal []byte) (_ bool) {
 	}
 
 	return bytes.Equal(query, equal)
+}
+
+func (m *Validator) argLookup(lookup []byte) ([]byte, bool) {
+	query := m.requestArgs.PeekBytes(lookup)
+
+	return query, len(query) != 0
 }

@@ -31,18 +31,22 @@ type Randomizer struct {
 	relUpdFreqErr  time.Duration
 	relUpdFreqBoot time.Duration
 
+	encoder *zstd.Encoder
 	decoder *zstd.Decoder
 
-	mu       sync.RWMutex
-	releases []string
+	mu          sync.RWMutex
+	releases    []string
+	rawreleases map[string][]byte
 }
 
 func New(c context.Context) *Randomizer {
 	cli := c.Value(utils.CKCliCtx).(*cli.Context)
 
 	var dec *zstd.Decoder
+	var enc *zstd.Encoder
 	if cli.Bool("randomizer-redis-zstd-enable") {
 		dec, _ = zstd.NewReader(nil, zstd.WithDecoderConcurrency(0))
+		enc, _ = zstd.NewWriter(nil)
 	}
 
 	r := &Randomizer{
@@ -68,9 +72,11 @@ func New(c context.Context) *Randomizer {
 		relUpdFreqErr:  cli.Duration("randomizer-update-frequency-onerror"),
 		relUpdFreqBoot: cli.Duration("randomizer-update-frequency-bootstrap"),
 
+		encoder: enc,
 		decoder: dec,
 
 		releases:    make([]string, 0),
+		rawreleases: make(map[string][]byte),
 		releasesKey: cli.String("randomizer-releaseskey"),
 	}
 
@@ -84,6 +90,19 @@ func (m *Randomizer) Bootstrap() {
 
 func (m *Randomizer) Randomize() string {
 	return m.randomRelease()
+}
+
+func (m *Randomizer) GetRawRelease(code []byte) (release []byte, ok bool, e error) {
+	var rawrelease []byte
+	rawrelease, ok = m.rawreleases[futils.UnsafeString(code)]
+
+	// decompress chunk response from redis
+	if release, e = m.decompressPayload(rawrelease); e != nil {
+		m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
+		return
+	}
+
+	return
 }
 
 //
@@ -192,6 +211,14 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R100
 			continue
 		}
 
+		//
+		var rawReleases RawReleases
+		if e = json.Unmarshal(dres, &rawReleases); e != nil {
+			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
+			errs = append(errs, e.Error())
+			continue
+		}
+
 		// get json formated response from decompressed response
 		var releasesChunk Releases
 		if e = json.Unmarshal(dres, &releasesChunk); e != nil {
@@ -201,7 +228,10 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R100
 		}
 
 		// parse json chunk response
-		for _, release := range releasesChunk {
+		for id, release := range releasesChunk {
+			// save rawdata from redis for query=release
+			m.rawreleases[release.Code] = m.compressPayload(rawReleases[id])
+
 			if release.BlockedInfo != nil && release.BlockedInfo.IsBlockedByCopyrights {
 				m.log.Debug().Msgf("release %d (%s) worldwide banned, skip it...", release.Id, release.Code)
 				banned++
@@ -263,4 +293,8 @@ func (m *Randomizer) decompressPayload(payload []byte) ([]byte, error) {
 	}
 
 	return m.decoder.DecodeAll(payload, nil)
+}
+
+func (m *Randomizer) compressPayload(payload []byte) []byte {
+	return m.encoder.EncodeAll(payload, make([]byte, 0, len(payload)))
 }

@@ -1,8 +1,11 @@
 package anilibria
 
+import "encoding/json"
+
 type (
-	Releases map[string]*Release
-	Release  struct {
+	RawReleases map[string]json.RawMessage
+	Releases    map[string]*Release
+	Release     struct {
 		Id          uint
 		Code        string
 		BlockedInfo *ReleaseBlockedInfo `json:"blockedInfo"`

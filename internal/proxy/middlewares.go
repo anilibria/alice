@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +24,29 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 				}
 				rlog(c).Error().Msg("could not respond on random release query - " + e.Error())
 			}
+		}
+	}
+
+	if v.IsQueryEqual([]byte("release")) {
+		if m.randomizer != nil {
+			if code, ok := v.Arg([]byte("code")); ok {
+				if release, ok, e := m.randomizer.GetRawRelease(code); e == nil && ok {
+					if e = utils.RespondWithRawJSON(release, c); e == nil {
+						fmt.Println("returned cached value")
+						return respondPlainWithStatus(c, fiber.StatusOK)
+					} else {
+						return fiber.NewError(fiber.StatusBadRequest, e.Error())
+					}
+				} else if e != nil {
+					return fiber.NewError(fiber.StatusBadRequest, e.Error())
+				} else {
+					return fiber.NewError(fiber.StatusNotFound, "3")
+				}
+			} else {
+				return fiber.NewError(fiber.StatusBadRequest, "2")
+			}
+		} else {
+			return fiber.NewError(fiber.StatusBadRequest, "1")
 		}
 	}
 

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"io"
 	"sync"
 
@@ -11,6 +12,11 @@ type (
 	ApiResponse struct {
 		Status bool
 		Data   *ApiResponseData
+		Error  *ApiError
+	}
+	ApiResponseRaw struct {
+		Status bool
+		Data   *json.RawMessage
 		Error  *ApiError
 	}
 	ApiResponseWOData struct {
@@ -74,6 +80,23 @@ func RespondWithApiError(status int, msg, desc string, w io.Writer) (e error) {
 	apirsp.Error.Code, apirsp.Error.Message, apirsp.Error.Description =
 		status, msg, desc
 	apirsp.Data = nil
+
+	var buf []byte
+	if buf, e = easyjson.Marshal(apirsp); e != nil {
+		return
+	}
+
+	_, e = w.Write(buf)
+	return
+}
+
+func RespondWithRawJSON(payload []byte, w io.Writer) (e error) {
+	rawjson := json.RawMessage(payload)
+	apirsp := &ApiResponseRaw{
+		Status: true,
+		Error:  nil,
+		Data:   &rawjson,
+	}
 
 	var buf []byte
 	if buf, e = easyjson.Marshal(apirsp); e != nil {
