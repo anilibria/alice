@@ -144,7 +144,7 @@ func (m *Randomizer) peekReleaseKeyChunks() (_ int, e error) {
 	return strconv.Atoi(futils.UnsafeString(dres))
 }
 
-func (m *Randomizer) lookupReleases() (_ []string, e error) {
+func (m *Randomizer) lookupReleases() (_ []string, e error) { // skipcq: GO-R1005 needed to be kept as it is
 	var chunks int
 	if chunks, e = m.peekReleaseKeyChunks(); e != nil {
 		return
@@ -172,7 +172,8 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
 		}
 
-		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil { // get compressed chunk response from redis
+		// get compressed chunk response from redis
+		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
 			e = fmt.Errorf("given chunk number %d is not exists", i)
 			m.log.Warn().Msg(e.Error())
 			errs = append(errs, e.Error())
@@ -183,15 +184,17 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			continue
 		}
 
+		// decompress chunk response from redis
 		var dres []byte
-		if dres, e = m.decompressPayload(futils.UnsafeBytes(res)); e != nil { // decompress chunk response from redis
+		if dres, e = m.decompressPayload(futils.UnsafeBytes(res)); e != nil {
 			m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
 		}
 
+		// get json formated response from decompressed response
 		var releasesChunk Releases
-		if e = json.Unmarshal(dres, &releasesChunk); e != nil { // get json formated response from decompressed response
+		if e = json.Unmarshal(dres, &releasesChunk); e != nil {
 			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
