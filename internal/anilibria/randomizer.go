@@ -172,8 +172,7 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			m.log.Trace().Msgf("parsing chunk %d/%d...", i, chunks)
 		}
 
-		// get compressed chunk response from redis
-		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil {
+		if res, e = m.rclient.Get(m.rctx, m.releasesKey+strconv.Itoa(i)).Result(); e == redis.Nil { // get compressed chunk response from redis
 			e = fmt.Errorf("given chunk number %d is not exists", i)
 			m.log.Warn().Msg(e.Error())
 			errs = append(errs, e.Error())
@@ -184,17 +183,15 @@ func (m *Randomizer) lookupReleases() (_ []string, e error) {
 			continue
 		}
 
-		// decompress chunk response from redis
 		var dres []byte
-		if dres, e = m.decompressPayload(futils.UnsafeBytes(res)); e != nil {
+		if dres, e = m.decompressPayload(futils.UnsafeBytes(res)); e != nil { // decompress chunk response from redis
 			m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
 		}
 
-		// get json formated response from decompressed response
 		var releasesChunk Releases
-		if e = json.Unmarshal(dres, &releasesChunk); e != nil {
+		if e = json.Unmarshal(dres, &releasesChunk); e != nil { // get json formated response from decompressed response
 			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
