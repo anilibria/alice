@@ -43,7 +43,10 @@ func AcquireValidator(c *fiber.Ctx, ctr []byte) (v *Validator) {
 }
 
 func ReleaseValidator(v *Validator) {
-	fasthttp.ReleaseArgs(v.requestArgs)
+	if v.requestArgs != nil {
+		fasthttp.ReleaseArgs(v.requestArgs)
+	}
+
 	v.Reset()
 	validatorPool.Put(v)
 }
