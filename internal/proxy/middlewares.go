@@ -25,7 +25,6 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 	}
 
 	// hijack all query=random queries
-	fmt.Printf("ARGS LEN %d\n", v.ArgsLen())
 	if v.IsQueryEqual([]byte("release")) && v.ArgsLen() == 2 {
 		return m.middlewareReleaseRequest(c, v)
 	}
