@@ -15,10 +15,15 @@ func (m *Proxy) MiddlewareValidation(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusBadRequest, e.Error())
 	}
 
+	// set ALICE cache status
+	c.Response().Header.Set("X-Alice-Cache", "MISS")
+
+	// hijack all query=random_release queries
 	if v.IsQueryEqual([]byte("random_release")) {
 		if m.randomizer != nil {
 			if release := m.randomizer.Randomize(); release != "" {
 				if e = utils.RespondWithRandomRelease(release, c); e == nil {
+					c.Response().Header.Set("X-Alice-Cache", "HIT")
 					return respondPlainWithStatus(c, fiber.StatusOK)
 				}
 				rlog(c).Error().Msg("could not respond on random release query - " + e.Error())

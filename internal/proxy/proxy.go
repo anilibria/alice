@@ -202,12 +202,15 @@ func (m *Proxy) canRespondFromCache(c *fiber.Ctx) (_ bool, e error) {
 
 	var ok bool
 	if ok, e = m.cache.IsCached(country, key.UnsafeString()); e != nil {
+		c.Response().Header.Set("X-Alice-Cache", "FAILED")
 		rlog(c).Warn().Msg("there is problems with cache driver")
 		return
 	} else if !ok {
+		c.Response().Header.Set("X-Alice-Cache", "MISS")
 		return
 	}
 
+	c.Response().Header.Set("X-Alice-Cache", "HIT")
 	return true, e
 }
 
