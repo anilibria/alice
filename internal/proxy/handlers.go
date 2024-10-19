@@ -9,6 +9,7 @@ import (
 
 func (m *Proxy) IsRequestCached(c *fiber.Ctx) (ok bool) {
 	if m.IsCacheBypass(c) {
+		c.Response().Header.Set("X-Alice-Cache", "BYPASS")
 		return true
 	}
 
@@ -37,6 +38,8 @@ func (m *Proxy) HandleProxyToDst(c *fiber.Ctx) (e error) {
 }
 
 func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
+	c.Response().Header.Set("X-Alice-Cache", "FAILED")
+
 	if m.randomizer == nil {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "BUG! randomizer is not initialized")
 	}
@@ -46,6 +49,8 @@ func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusServiceUnavailable,
 			"an error occurred in randomizer, maybe it's not ready yet")
 	}
+
+	c.Response().Header.Set("X-Alice-Cache", "HIT")
 
 	if bytes.Equal(c.Request().PostArgs().Peek("js"), []byte("1")) {
 		fmt.Fprintln(c, release)
