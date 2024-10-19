@@ -1,10 +1,11 @@
 package proxy
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/anilibria/alice/internal/anilibria"
 	"github.com/anilibria/alice/internal/cache"
@@ -14,6 +15,7 @@ import (
 	futils "github.com/gofiber/fiber/v2/utils"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
+	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
 )
 
@@ -87,6 +89,28 @@ func (*Proxy) IsCacheBypass(c *fiber.Ctx) bool {
 	return key.Len() == 0
 }
 
+//
+//
+//
+
+var headerCache = sync.Pool{
+	New: func() any {
+		return map[string][]byte{}
+	},
+}
+
+func acquireHeaderCache() map[string][]byte {
+	return headerCache.Get().(map[string][]byte)
+}
+
+func releaseHeaderCache(hcache map[string][]byte) {
+	for key := range hcache {
+		delete(hcache, key)
+	}
+
+	headerCache.Put(hcache)
+}
+
 func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
 	req := fasthttp.AcquireRequest()
 	c.Context().Request.CopyTo(req)
@@ -120,15 +144,6 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		e = errors.New("proxy server respond with nil body")
 		return
 	}
-
-	// copy all response headers (like Set-Cookie and etc)
-	rsp.Header.VisitAll(func(k, v []byte) {
-		if bytes.Equal(k, []byte("Server")) {
-			return
-		}
-
-		c.Response().Header.SetBytesKV(k, v)
-	})
 
 	var ok bool
 	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
@@ -187,7 +202,32 @@ func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 		rlog(c).Trace().Msgf("Key: %s", key.UnsafeString())
 	}
 
+	// cache response body
 	if e = m.cache.Cache(country, key.UnsafeString(), rsp.Body()); e != nil {
+		return
+	}
+
+	// get modified headers for further caching V2
+	headers := acquireHeaderCache()
+	defer releaseHeaderCache(headers)
+
+	rsp.Header.VisitAll(func(k, v []byte) {
+		if len(c.Response().Header.PeekBytes(k)) != 0 {
+			return
+		}
+
+		headers[futils.UnsafeString(k)] = v
+	})
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+	defer buf.Reset()
+
+	if buf.B, e = json.Marshal(headers); e != nil {
+		return
+	}
+
+	if e = m.cache.Cache(country, key.UnsafeHeadersKey(), buf.Bytes()); e != nil {
 		return
 	}
 
@@ -225,6 +265,26 @@ func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 	key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 	country := m.countryByRemoteIP(c)
 
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+	defer buf.Reset()
+
+	if e = m.cache.Write(country, key.UnsafeHeadersKey(), buf); e != nil {
+		return
+	}
+
+	headers := acquireHeaderCache()
+	defer releaseHeaderCache(headers)
+
+	if e = json.Unmarshal(buf.B, &headers); e != nil {
+		return
+	}
+
+	for name, value := range headers {
+		c.Response().Header.SetBytesKV(futils.UnsafeBytes(name), value)
+	}
+
+	// get body from cache
 	if e = m.cache.Write(country, key.UnsafeString(), c); e != nil {
 		return
 	}
