@@ -143,7 +143,7 @@ func (m *Cache) Write(country, key string, w io.Writer) error {
 }
 
 func (m *Cache) setCompressed(zone cacheZone, key string, payload []byte) error {
-	cmp := s2.Encode(nil, payload)
+	cmp := s2.EncodeSnappyBetter(nil, payload)
 
 	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
 		m.log.Trace().Msgf("compressed from %d to %d bytes", len(payload), len(cmp))
