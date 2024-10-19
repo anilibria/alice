@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/anilibria/alice/internal/anilibria"
 	"github.com/anilibria/alice/internal/cache"
@@ -92,24 +91,6 @@ func (*Proxy) IsCacheBypass(c *fiber.Ctx) bool {
 //
 //
 //
-
-var headerCache = sync.Pool{
-	New: func() any {
-		return map[string][]byte{}
-	},
-}
-
-func acquireHeaderCache() map[string][]byte {
-	return headerCache.Get().(map[string][]byte)
-}
-
-func releaseHeaderCache(hcache map[string][]byte) {
-	for key := range hcache {
-		delete(hcache, key)
-	}
-
-	headerCache.Put(hcache)
-}
 
 func (m *Proxy) acquireRewritedRequest(c *fiber.Ctx) *fasthttp.Request {
 	req := fasthttp.AcquireRequest()
@@ -208,11 +189,15 @@ func (m *Proxy) cacheResponse(c *fiber.Ctx, rsp *fasthttp.Response) (e error) {
 	}
 
 	// get modified headers for further caching V2
-	headers := acquireHeaderCache()
-	defer releaseHeaderCache(headers)
+	headers := utils.AcquireHeaderCache()
+	defer utils.ReleaseHeaderCache(headers)
 
 	rsp.Header.VisitAll(func(k, v []byte) {
 		if len(c.Response().Header.PeekBytes(k)) != 0 {
+			return
+		}
+
+		if _, ok := utils.HeadersIgnoreList[futils.UnsafeString(k)]; ok {
 			return
 		}
 
@@ -273,8 +258,8 @@ func (m *Proxy) respondFromCache(c *fiber.Ctx) (e error) {
 		return
 	}
 
-	headers := acquireHeaderCache()
-	defer releaseHeaderCache(headers)
+	headers := utils.AcquireHeaderCache()
+	defer utils.ReleaseHeaderCache(headers)
 
 	if e = json.Unmarshal(buf.B, &headers); e != nil {
 		return
