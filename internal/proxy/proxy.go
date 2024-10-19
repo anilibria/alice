@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -121,7 +122,13 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 	}
 
 	// copy all response headers (like Set-Cookie and etc)
-	rsp.Header.CopyTo(&c.Response().Header)
+	rsp.Header.VisitAll(func(k, v []byte) {
+		if bytes.Equal(k, []byte("Server")) {
+			return
+		}
+
+		c.Response().Header.SetBytesKV(k, v)
+	})
 
 	var ok bool
 	if ok, e = m.unmarshalApiResponse(c, rsp); e != nil {
