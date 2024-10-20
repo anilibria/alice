@@ -57,7 +57,7 @@ func (m *Release) IsOverworldBlocked() (bool, bool) {
 		return false, false
 	}
 
-	return m.BlockedInfo.IsBlockedByCopyrights == true, true
+	return m.BlockedInfo.IsBlockedByCopyrights, true
 }
 
 func (m *Release) Raw() ([]byte, bool) {
