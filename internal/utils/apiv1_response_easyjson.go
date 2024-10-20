@@ -136,14 +136,12 @@ func easyjson1e840bfDecodeGithubComAnilibriaAliceInternalUtils1(in *jlexer.Lexer
 				}
 			}
 		case "error":
-			if in.IsNull() {
-				in.Skip()
-				out.Error = nil
+			if m, ok := out.Error.(easyjson.Unmarshaler); ok {
+				m.UnmarshalEasyJSON(in)
+			} else if m, ok := out.Error.(json.Unmarshaler); ok {
+				_ = m.UnmarshalJSON(in.Raw())
 			} else {
-				if out.Error == nil {
-					out.Error = new(ApiError)
-				}
-				(*out.Error).UnmarshalEasyJSON(in)
+				out.Error = in.Interface()
 			}
 		default:
 			in.SkipRecursive()
@@ -176,10 +174,12 @@ func easyjson1e840bfEncodeGithubComAnilibriaAliceInternalUtils1(out *jwriter.Wri
 	{
 		const prefix string = ",\"error\":"
 		out.RawString(prefix)
-		if in.Error == nil {
-			out.RawString("null")
+		if m, ok := in.Error.(easyjson.Marshaler); ok {
+			m.MarshalEasyJSON(out)
+		} else if m, ok := in.Error.(json.Marshaler); ok {
+			out.Raw(m.MarshalJSON())
 		} else {
-			(*in.Error).MarshalEasyJSON(out)
+			out.Raw(json.Marshal(in.Error))
 		}
 	}
 	out.RawByte('}')

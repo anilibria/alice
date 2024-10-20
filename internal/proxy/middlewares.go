@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/json"
 
 	"github.com/anilibria/alice/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -88,7 +88,7 @@ func (m *Proxy) middlewareReleaseRequest(c *fiber.Ctx, v *Validator) (e error) {
 		}
 	}
 
-	var release []byte
+	var release json.RawMessage
 	if release, ok, e = m.randomizer.RawRelease(ident); e != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
 	} else if !ok {
@@ -96,11 +96,9 @@ func (m *Proxy) middlewareReleaseRequest(c *fiber.Ctx, v *Validator) (e error) {
 		return c.Next() // bypass to origin
 	}
 
-	if e = utils.RespondWithRawJSON(release, c); e != nil {
+	if e = utils.RespondWithRawJSON(&release, c); e != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, e.Error())
 	}
-
-	fmt.Println("returned cached value")
 
 	c.Response().Header.Set("X-Alice-Cache", "HIT")
 	return respondPlainWithStatus(c, fiber.StatusOK)

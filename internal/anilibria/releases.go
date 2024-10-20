@@ -53,11 +53,6 @@ func NewReleases(opts ...ROption) *Releases {
 }
 
 func (m *Releases) Commit(releases map[string]*Release) {
-	length, _ := actionWithRLock[int](&m.mu, func() (lenth int, _ bool) {
-		lenth = len(m.releases)
-		return lenth, lenth != 0
-	})
-
 	actionWithLock(&m.mu, func() {
 		m.releases = releases
 		m.idxcode = make([]string, 0, len(m.releases))
@@ -75,8 +70,6 @@ func (m *Releases) Commit(releases map[string]*Release) {
 			m.idxcode = append(m.idxcode, release.Code)
 		}
 	})
-
-	fmt.Printf("COMMITING: old map %d len, new map %d len\n", length, m.Len())
 }
 
 func (m *Releases) Len() (length int) {

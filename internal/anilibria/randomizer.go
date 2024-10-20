@@ -97,7 +97,7 @@ func (m *Randomizer) Randomize(region string) (_ string, e error) {
 	return release.Code, e
 }
 
-func (m *Randomizer) RawRelease(ident []byte) (rawjson []byte, ok bool, e error) {
+func (m *Randomizer) RawRelease(ident []byte) (rawjsonbuf json.RawMessage, ok bool, e error) {
 	var release *Release
 	if release, ok = m.releases.Release(futils.UnsafeString(ident)); !ok {
 		return
@@ -111,7 +111,10 @@ func (m *Randomizer) RawRelease(ident []byte) (rawjson []byte, ok bool, e error)
 	}
 
 	// decompress chunk response from redis
-	if rawjson, e = m.decompressPayload(rawbuf.B); e != nil {
+	// rawjsonbuf := m.rawbufpool.Get()
+	// defer m.rawbufpool.Put(rawjsonbuf)
+
+	if rawjsonbuf, e = m.decompressPayload(rawbuf.B); e != nil {
 		m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
 		return
 	}

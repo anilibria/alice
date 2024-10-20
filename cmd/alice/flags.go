@@ -130,13 +130,13 @@ func flagsInitialization(expertMode bool) []cli.Flag {
 		&cli.IntFlag{
 			Name:     "limiter-max-req",
 			Category: "Limiter settings",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    200,
 		},
 		&cli.DurationFlag{
 			Name:     "limiter-records-duration",
 			Category: "Limiter settings",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    5 * time.Minute,
 		},
 
