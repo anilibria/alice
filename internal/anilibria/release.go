@@ -10,19 +10,28 @@ type (
 		Code        string
 		BlockedInfo *ReleaseBlockedInfo `json:"blockedInfo"`
 
-		raw RawRelease
+		raw []byte
 	}
 	ReleaseBlockedInfo struct {
-		Blocked               bool
-		Reason                string
+		Blocked               bool     `json:"blocked"`
+		Reason                string   `json:"reason"`
 		IsBlockedInGeo        []string `json:"is_blocked_in_geo"`
 		IsBlockedByCopyrights bool     `json:"is_blocked_by_copyrights"`
 	}
 
-	RawRelease *json.RawMessage
+	RawRelease map[string]*json.RawMessage
 
 	ReleasesChunk    map[string]*Release
 	RawReleasesChunk map[string]RawRelease
+)
+
+type ReleaseBlockReason string
+
+const (
+	// WW block
+	BlockedByCopyrights = "Данный релиз заблокирован во всех регионах по требованию правообладателя."
+	// Regional block
+	BlockedInRegion = "Данный релиз заблокирован в вашем регионе по требованию правоохранительных органов."
 )
 
 func (m *Release) IsBlockedInRegion(region string) (bool, bool) {
@@ -51,15 +60,23 @@ func (m *Release) IsOverworldBlocked() (bool, bool) {
 	return m.BlockedInfo.IsBlockedByCopyrights == true, true
 }
 
-// func (m *Release) RawJSON() (_ []byte, ok bool) {
-// 	if len(m.raw) == 0 {
-// 		ok = false
-// 		return
-// 	}
+func (m *Release) Raw() ([]byte, bool) {
+	if len(m.raw) == 0 {
+		return nil, false
+	}
 
-// 	return m.raw, ok
-// }
+	return m.raw, true
+}
 
-func (m *Release) SetRawJSON(raw RawRelease) {
+func (m *Release) SetRaw(raw []byte) {
 	m.raw = raw
+}
+
+func (m *Release) PatchBlockReason(reason string) bool {
+	if m.BlockedInfo == nil {
+		return false
+	}
+
+	m.BlockedInfo.Reason = reason
+	return true
 }

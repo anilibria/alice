@@ -34,6 +34,8 @@ type Randomizer struct {
 	decoder *zstd.Decoder
 
 	releases *Releases
+
+	rawbufpool *bytebufferpool.Pool
 }
 
 func New(c context.Context) *Randomizer {
@@ -74,6 +76,8 @@ func New(c context.Context) *Randomizer {
 
 		releases:    NewReleases(WithFetchTries(cli.Int("randomizer-random-fetch-tries"))),
 		releasesKey: cli.String("randomizer-releaseskey"),
+
+		rawbufpool: &bytebufferpool.Pool{},
 	}
 
 	return r
@@ -93,20 +97,27 @@ func (m *Randomizer) Randomize(region string) (_ string, e error) {
 	return release.Code, e
 }
 
-// func (m *Randomizer) RawRelease(ident []byte) (release []byte, ok bool, e error) {
-// 	var rawrelease []byte
-// 	if rawrelease, ok = m.rawreleases[futils.UnsafeString(ident)]; !ok {
-// 		return
-// 	}
+func (m *Randomizer) RawRelease(ident []byte) (rawjson []byte, ok bool, e error) {
+	var release *Release
+	if release, ok = m.releases.Release(futils.UnsafeString(ident)); !ok {
+		return
+	}
 
-// 	// decompress chunk response from redis
-// 	if release, e = m.decompressPayload(rawrelease); e != nil {
-// 		m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
-// 		return
-// 	}
+	rawbuf := m.rawbufpool.Get()
+	defer m.rawbufpool.Put(rawbuf)
 
-// 	return
-// }
+	if rawbuf.B, ok = release.Raw(); !ok {
+		return
+	}
+
+	// decompress chunk response from redis
+	if rawjson, e = m.decompressPayload(rawbuf.B); e != nil {
+		m.log.Warn().Msg("an error occurred while decompress redis response - " + e.Error())
+		return
+	}
+
+	return
+}
 
 //
 //
@@ -198,10 +209,7 @@ func (m *Randomizer) lookupReleases(releases map[string]*Release) (chunks, faile
 		}
 
 		chunk := bytebufferpool.Get()
-		defer func() {
-			chunk.Reset()
-			bytebufferpool.Put(chunk)
-		}()
+		bytebufferpool.Put(chunk)
 
 		// get decompressed chunk from redis
 		if chunk.B, e = m.chunkFetchFromRedis(m.releasesKey + strconv.Itoa(i)); e != nil {
@@ -218,7 +226,7 @@ func (m *Randomizer) lookupReleases(releases map[string]*Release) (chunks, faile
 		// store raw json objects for further query=release responding
 		var rawReleases RawReleasesChunk
 		if e = json.Unmarshal(chunk.B, &rawReleases); e != nil {
-			m.log.Warn().Msg("an error occurred while unmarshal release chunk - " + e.Error())
+			m.log.Warn().Msg("an error occurred while unmarshal raw release chunk - " + e.Error())
 			errs = append(errs, e.Error())
 			continue
 		}
@@ -238,17 +246,39 @@ func (m *Randomizer) lookupReleases(releases map[string]*Release) (chunks, faile
 				continue
 			}
 
-			// save raw json for query=release
-			release.SetRawJSON(rawReleases[id])
+			if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+				m.log.Trace().Msgf("release %d with code %s found", release.Id, release.Code)
+			}
 
 			if b, _ := release.IsOverworldBlocked(); b {
 				m.log.Debug().Msgf("release %d (%s) worldwide banned", release.Id, release.Code)
 				banned++
+
+				// patch raw json for android app
+				release.PatchBlockReason(BlockedByCopyrights)
+
+				var rawBlockedInfo json.RawMessage
+				if rawBlockedInfo, e = json.Marshal(&release.BlockedInfo); e != nil {
+					m.log.Warn().Msg("an error occurred in patching release - " + e.Error())
+					errs = append(errs, e.Error())
+					continue
+				}
+				rawReleases[id]["blockedInfo"] = &rawBlockedInfo
+
+				delete(rawReleases[id], "externalPlaylist")
+				delete(rawReleases[id], "playlist")
 			}
 
-			if zerolog.GlobalLevel() <= zerolog.DebugLevel {
-				m.log.Trace().Msgf("release %d with code %s found", release.Id, release.Code)
+			// save raw json for query=release
+			rawbuf := m.rawbufpool.Get()
+			defer m.rawbufpool.Put(rawbuf)
+
+			if rawbuf.B, e = json.Marshal(rawReleases[id]); e != nil {
+				m.log.Warn().Msg("an error occurred in patching release - " + e.Error())
+				errs = append(errs, e.Error())
+				continue
 			}
+			release.SetRaw(m.compressPayload(rawbuf.B))
 
 			releases[release.Code] = release
 		}

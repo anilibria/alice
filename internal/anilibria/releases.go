@@ -122,9 +122,9 @@ func (m *Releases) RandomRelease(region string) (release *Release, e error) {
 	return nil, errors.New("there are too many errors in release fetching")
 }
 
-func (m *Releases) IsExists(code string) (ok bool) {
-	_, ok = actionWithRLock(&m.mu, func() (_ *Release, ok bool) {
-		_, ok = m.releases[code]
+func (m *Releases) Release(code string) (release *Release, ok bool) {
+	release, ok = actionWithRLock(&m.mu, func() (release *Release, ok bool) {
+		release, ok = m.releases[code]
 		return
 	})
 
