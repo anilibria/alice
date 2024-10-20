@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
+	github.com/goccy/go-json v0.10.3
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/jedib0t/go-pretty/v6 v6.6.0
