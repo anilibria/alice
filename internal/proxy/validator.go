@@ -98,7 +98,7 @@ func (m *Validator) Arg(lookup []byte) ([]byte, bool) {
 }
 
 func (m *Validator) ArgsLen() int {
-	return m.argsLen()
+	return m.requestArgs.Len()
 }
 
 func (m *Validator) Reset() {
@@ -317,8 +317,4 @@ func (m *Validator) argLookup(lookup []byte) ([]byte, bool) {
 	query := m.requestArgs.PeekBytes(lookup)
 
 	return query, len(query) != 0
-}
-
-func (m *Validator) argsLen() int {
-	return m.requestArgs.Len()
 }
