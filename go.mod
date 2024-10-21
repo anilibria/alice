@@ -6,7 +6,7 @@ require (
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
-	github.com/jedib0t/go-pretty/v6 v6.6.0
+	github.com/jedib0t/go-pretty/v6 v6.6.1
 	github.com/klauspost/compress v1.17.11
 	github.com/mailru/easyjson v0.7.7
 	github.com/oschwald/maxminddb-golang v1.13.1
