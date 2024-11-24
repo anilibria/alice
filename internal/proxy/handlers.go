@@ -44,8 +44,13 @@ func (m *Proxy) HandleRandomRelease(c *fiber.Ctx) (e error) {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "BUG! randomizer is not initialized")
 	}
 
+	country := m.countryByRemoteIP(c)
+
 	var release string
-	if release = m.randomizer.Randomize(); release == "" {
+	if release, e = m.randomizer.Randomize(country); e != nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable,
+			"an error occurred in randomizer, "+e.Error())
+	} else if release == "" {
 		return fiber.NewError(fiber.StatusServiceUnavailable,
 			"an error occurred in randomizer, maybe it's not ready yet")
 	}

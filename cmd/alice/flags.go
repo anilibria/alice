@@ -130,13 +130,13 @@ func flagsInitialization(expertMode bool) []cli.Flag {
 		&cli.IntFlag{
 			Name:     "limiter-max-req",
 			Category: "Limiter settings",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    200,
 		},
 		&cli.DurationFlag{
 			Name:     "limiter-records-duration",
 			Category: "Limiter settings",
-			Hidden:   true,
+			Hidden:   expertMode,
 			Value:    5 * time.Minute,
 		},
 
@@ -346,7 +346,13 @@ func flagsInitialization(expertMode bool) []cli.Flag {
 			Name:     "randomizer-update-frequency-bootstrap",
 			Category: "Release randomizer",
 			Value:    5 * time.Second,
-			Hidden:   true,
+			Hidden:   expertMode,
+		},
+		&cli.IntFlag{
+			Name:   "randomizer-random-fetch-tries",
+			Usage:  "possible errors (tries) for fetching random release",
+			Value:  10,
+			Hidden: expertMode,
 		},
 		&cli.IntFlag{
 			Name:     "redis-client-maxretries",
