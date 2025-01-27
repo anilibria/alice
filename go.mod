@@ -8,7 +8,7 @@ require (
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/klauspost/compress v1.17.11
-	github.com/mailru/easyjson v0.7.7
+	github.com/mailru/easyjson v0.9.0
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/rs/zerolog v1.33.0
