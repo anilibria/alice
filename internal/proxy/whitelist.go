@@ -99,4 +99,5 @@ var queryBypasslist = map[string]interface{}{
 	"auth_get_otp":    nil,
 	"auth_accept_otp": nil,
 	"auth_login_otp":  nil,
+	"favorites":       nil,
 }
