@@ -44,3 +44,7 @@ func (m *Key) UnsafeString() string {
 func (m *Key) Put(key []byte) {
 	m.key = append(m.key[:0], key...)
 }
+
+func (m *Key) UnsafeHeadersKey() string {
+	return "headers:::" + futils.UnsafeString(m.key)
+}
