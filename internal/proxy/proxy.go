@@ -131,7 +131,7 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		key.Reset()
 		c.Response().Header.Set("X-Alice-Cache", "BYPASS")
 		c.Response().Header.Set("Set-Cookie", string(cookie))
-    // TODO: refactor
+		// TODO: refactor
 	}
 
 	var ok bool
