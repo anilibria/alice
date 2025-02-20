@@ -126,11 +126,11 @@ func (m *Proxy) doRequest(c *fiber.Ctx, req *fasthttp.Request, rsp *fasthttp.Res
 		return
 	}
 
-  if cookie := rsp.Header.Peek("Set-Cookie"); len(cookie) != 0 {
+	if cookie := rsp.Header.Peek("Set-Cookie"); len(cookie) != 0 {
 		key := c.Context().UserValue(utils.UVCacheKey).(*Key)
 		key.Reset()
 		c.Response().Header.Set("X-Alice-Cache", "BYPASS")
-    c.Response().Header.Set("Set-Cookie", cookie)
+		c.Response().Header.Set("Set-Cookie", cookie)
 	}
 
 	var ok bool
