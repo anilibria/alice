@@ -1,6 +1,7 @@
 module github.com/anilibria/alice
 
 go 1.19
+toolchain go1.24.1
 
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
@@ -10,7 +11,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/mailru/easyjson v0.9.0
 	github.com/oschwald/maxminddb-golang v1.13.1
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/valyala/bytebufferpool v1.0.0
