@@ -20,7 +20,7 @@ jobs:
       BUILD_GOTAG: ${{ steps.gotag-selector.outputs.BUILD_GOTAG }}
       BUILD_GOTIME: ${{ steps.gotime-selector.outputs.BUILD_GOTIME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
@@ -50,7 +50,7 @@ jobs:
       packages: write
     needs: [ parse_phase ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: depot/setup-action@v1
       - uses: docker/login-action@v3
         with:
@@ -96,7 +96,7 @@ jobs:
           goarch: amd64
           extention: .exe
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: actions/setup-go@v5
       with:
         go-version: 1.19.10
